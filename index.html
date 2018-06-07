@@ -85,6 +85,7 @@
 		
 		function creatingFieldObj(dataFieldValue, dataFieldLabel) {
 			var newFieldObj = {};
+			var flag = 0;
 			for (var fieldLabelObj in dataFieldLabel) {
 			
 				if (dataFieldLabel[fieldLabelObj].name === "XITOR_KEY") {
@@ -93,6 +94,9 @@
 				} else {
 					var fieldName = dataFieldLabel[fieldLabelObj].name;
 					var fieldValue = parseFloat(dataFieldValue[fieldName]);
+					if (!isNaN(fieldValue)){
+						flag = 1;
+					}
 				}
 				var fieldLabel = dataFieldLabel[fieldLabelObj].label;
 				
@@ -101,7 +105,12 @@
 					"value": fieldValue
 				};
 			}
-			searchMaximum(newFieldObj);
+			if (flag === 1){
+				searchMaximum(newFieldObj);
+			} else {
+				var captionCand = document.getElementById("text3731-9");
+				captionCand.textContent = newFieldObj["TRACKOR_KEY"].value;
+			}
 		}
 		
 		function searchMaximum(fieldObj){
