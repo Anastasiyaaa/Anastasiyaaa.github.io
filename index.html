@@ -111,6 +111,7 @@
 				var captionCand = document.getElementById("text3731-9");
 				captionCand.textContent = newFieldObj["TRACKOR_KEY"].value;
 			}
+			
 		}
 		
 		function searchMaximum(fieldObj){
@@ -147,7 +148,7 @@
 			var heightMaxFieldUpd = svgArrowsHeight - symArrowHeight/2;
 			var coefOfInitChange = heightMaxFieldUpd / maxFieldValue;
 			
-			changeRectTower(fieldObj["C_TOTAL_POLE_HT_W_ANT_FT"], coefOfInitChange, svgArrowsHeight, maxFieldValue);
+			//changeRectTower(fieldObj["C_TOTAL_POLE_HT_W_ANT_FT"], coefOfInitChange, svgArrowsHeight, maxFieldValue);
 			var divTblReference = document.getElementById("tblReference");
 			
 			for (var firstField in PAIRS_OF_FIELDS) {
@@ -166,9 +167,9 @@
 					creatingObjects(svgArrowsHeight, coefOfInitChange, symArrowHeight, colorIndex, fieldObj[firstFieldName], newTbodyReference, arrowType, gElementX, textX);
 				}
 				if (fieldObj[secondFieldName].value) {
-					
+				
 					var arrowType = "#symRight";
-					var gElementX = 134;
+					var gElementX = 255;
 					var textX = 25;
 					creatingObjects(svgArrowsHeight, coefOfInitChange, symArrowHeight, colorIndex, fieldObj[secondFieldName], newTbodyReference, arrowType, gElementX, textX);
 				}
@@ -176,16 +177,65 @@
 				newTblReference.appendChild(newTbodyReference);
 				divTblReference.appendChild(newTblReference);
 			}
+			
+			var heightTowerParts = {};
+			heightTowerParts["heightTowerTop"] = 20;
+			heightTowerParts["heightTowerCenter"] = 50;
+			heightTowerParts["heightTowerBottom"] = 30;
+			
+			changeRectTower(fieldObj["C_TOTAL_POLE_HT_W_ANT_FT"], coefOfInitChange, svgArrowsHeight, maxFieldValue, heightTowerParts);
 		}
 		
-		function changeRectTower (fieldObjTower, coefOfInitChange, svgArrowsHeight, maxFieldValue) {
+		function changeRectTower (fieldObjTower, coefOfInitChange, svgArrowsHeight, maxFieldValue, heightTowerParts) {
 			heightTower = fieldObjTower.value ? fieldObjTower.value : maxFieldValue;
 			
-			var rectTower = document.getElementById("rectTower");
-			var rectTowerHeight = heightTower*coefOfInitChange;
-			var rectTowerY = svgArrowsHeight - rectTowerHeight;
-			rectTower.setAttribute("height", rectTowerHeight);
-			rectTower.setAttribute("y", rectTowerY);
+			var svgTower = document.getElementById("svgTower");
+			var svgTowerHeight = heightTower*coefOfInitChange;
+			var svgTowerY = svgArrowsHeight - svgTowerHeight;
+			
+			var svgTowerVB = svgTower.getAttribute("viewBox").split(" ");
+			svgTowerVB[3] = String(svgTowerHeight);
+			svgTower.setAttribute("viewBox", svgTowerVB.join(" "));
+			
+			svgTower.setAttribute("height", svgTowerHeight);
+			svgTower.setAttribute("y", svgTowerY);
+						
+			var rectTopHeight = String(heightTowerParts["heightTowerTop"]) + "%";
+
+			var rectTopLeft = document.getElementById("rectTopLeft");
+			rectTopLeft.setAttribute("height", rectTopHeight);
+			
+			var rectTopCenter = document.getElementById("rectTopLeft");
+			rectTopCenter.setAttribute("height", rectTopHeight);
+			
+			var rectTopRight = document.getElementById("rectTopRight");
+			rectTopRight.setAttribute("height", rectTopHeight);
+			
+			var rectTopLittleHeight = heightTowerParts["heightTowerTop"] / 6;
+			var rectTopLittleHeightStr = String(rectTopLittleHeight) + "%";
+			var rectTopLittleY = String((heightTowerParts["heightTowerTop"] - rectTopLittleHeight) / 2) + "%";
+			
+			var rectTopLeftLittle = document.getElementById("rectTopLeftLittle");
+			rectTopLeftLittle.setAttribute("height", rectTopLittleHeightStr);
+			rectTopLeftLittle.setAttribute("y", rectTopLittleY);
+			
+			var rectTopRightLittle = document.getElementById("rectTopRightLittle");
+			rectTopRightLittle.setAttribute("height", rectTopLittleHeightStr);
+			rectTopRightLittle.setAttribute("y", rectTopLittleY);
+			
+			var rectCenterHeight = String(heightTowerParts["heightTowerCenter"]) + "%";
+			var rectCenterY = rectTopHeight;
+			
+			var rectCenter = document.getElementById("rectCenter");
+			rectCenter.setAttribute("height", rectCenterHeight);
+			rectCenter.setAttribute("y", rectCenterY);
+			
+			var rectBottomHeight = String(heightTowerParts["heightTowerBottom"]) + "%";
+			var rectBottomY = String(heightTowerParts["heightTowerTop"] + heightTowerParts["heightTowerCenter"]) + "%";
+			
+			var rectBottom = document.getElementById("rectBottom");
+			rectBottom.setAttribute("height", rectBottomHeight);
+			rectBottom.setAttribute("y", rectBottomY);
 		}
 		
 		function creatingObjects(svgArrowsHeight, coefOfInitChange, symArrowHeight, colorIndex, fieldObj, tbodyReference, arrowType, gElementX, textX) {
@@ -305,14 +355,20 @@
 		}
 		
 		function recalculationRectTower(shiftOfElements, coefScale) {
-			var rectTower = document.getElementById("rectTower");
-			var rectTowerHeight = parseFloat(rectTower.getAttribute("height"));
-			var rectTowerY = parseFloat(rectTower.getAttribute("y"));
-			var newRectTowerHeight = rectTowerHeight * coefScale;
-			var newRectTowerY = (rectTowerY - shiftOfElements) * coefScale + shiftOfElements;
-			rectTower.setAttribute("height", newRectTowerHeight);
-			rectTower.setAttribute("y", newRectTowerY);
+			var svgTower = document.getElementById("svgTower")
+			var svgTowerHeight = parseFloat(svgTower.getAttribute("height"));
+			var svgTowerY = parseFloat(svgTower.getAttribute("y"));
+			var newSvgTowerHeight = svgTowerHeight * coefScale;
+			var newSvgTowerY = (svgTowerY - shiftOfElements) * coefScale + shiftOfElements;
+			
+			var svgTowerVB = svgTower.getAttribute("viewBox").split(" ");
+			svgTowerVB[3] = String(newSvgTowerHeight);
+			svgTower.setAttribute("viewBox", svgTowerVB.join(" "));
+			
+			svgTower.setAttribute("height", newSvgTowerHeight);
+			svgTower.setAttribute("y", newSvgTowerY);
 		}
+		
 	</script>
     <style type="text/css">
 		body {
@@ -366,7 +422,7 @@
 		<input onclick="to_size('-')" type="button" value="-" style="width:24px;height:21px">
 	</div>
 	<!--<?xml version="1.0" encoding="UTF-8" standalone="no"?>-->
-	<svg id="svgArrows" viewBox="0 0 260 667" width = "260" height = "667" style="position:relative;" xmlns="http://www.w3.org/2000/svg" version="1.0" encoding="UTF-8" standalone="no">
+	<svg id="svgArrows" viewBox="0 0 380 667" width = "380" height = "667" style="position:relative;" xmlns="http://www.w3.org/2000/svg" version="1.0" encoding="UTF-8" standalone="no">
 		<symbol id="symRight" viewBox="0 0 125 37.5" width = "125" height = "37.5" style="position:absolute">
 			
 			<polygon points="125,30 125,7.5 25,7.5 25,0 0,18.75 25,37.5 25,30" style="stroke:#000000;stroke-width:0.5" id="polygon4187-4-5"></polygon>
@@ -377,13 +433,58 @@
 			<polygon points="0,30 0,7.5 100,7.5 100,0 125,18.75 100,37.5 100,30 " style="stroke:#000000;stroke-width:0.5" id="polygon4187-4-5"></polygon>
 			
 		</symbol>
-		<rect id="rectTower"
-			style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none"
-			ry=".12188"
-			height="100%"
-			width="7"
-			y="0"
-			x="126" />
+		<svg id="svgTower" viewBox="0 0 130 667" width = "130" height = "667" x = "125" style="position: absolute;" >
+			<rect id="rectTopLeft"
+				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
+				ry=".12188"
+				height="20%"
+				width="30"
+				y="0"
+				x="1" />
+			<rect id="rectTopLeftLittle"
+				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
+				ry=".12188"
+				height="3%"
+				width="19"
+				y="8.126%"
+				x="31" />
+			<rect id="rectTopCenter"
+				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
+				ry=".12188"
+				height="20%"
+				width="30"
+				y="0"
+				x="50" />
+			<rect id="rectTopRightLittle"
+				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
+				ry=".12188"
+				height="3%"
+				width="19"
+				y="8.126%"
+				x="80" />
+			<rect id="rectTopRight"
+				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
+				ry=".12188"
+				height="20%"
+				width="30"
+				y="0"
+				x="99" />			
+			<rect id="rectCenter"
+				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
+				ry=".12188"
+				height="50%"
+				width="19"
+				y="20%"
+				x="55.5" />
+			<rect id="rectBottom"
+				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
+				ry=".12188"
+				height="30%"
+				width="30"
+				y="70%"
+				x="50" />
+		</svg>
+		
 	</svg>
 </div>
 <div id="divTblReference" class="heights">
