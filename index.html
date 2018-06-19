@@ -110,6 +110,9 @@
 			} else {
 				var captionCand = document.getElementById("text3731-9");
 				captionCand.textContent = newFieldObj["TRACKOR_KEY"].value;
+				document.getElementById('buttonsScale').style.display = 'none';
+				var svgArrowsHeight = document.documentElement.clientHeight;
+				setTheInitialSvgSize(svgArrowsHeight);
 			}
 			
 		}
@@ -142,8 +145,10 @@
 			var symArrowObj = document.getElementById("symRight");
 			var symArrowHeight = parseFloat(symArrowObj.getAttribute("height"));
 			
-			var svgArrows = document.getElementById("svgArrows");
-			var svgArrowsHeight = svgArrows.clientHeight;
+			//var svgArrows = document.getElementById("svgArrows");
+			//var svgArrowsHeight = svgArrows.clientHeight;
+			var svgArrowsHeight = document.documentElement.clientHeight;
+			setTheInitialSvgSize(svgArrowsHeight);
 			
 			var heightMaxFieldUpd = svgArrowsHeight - symArrowHeight/2;
 			var coefOfInitChange = heightMaxFieldUpd / maxFieldValue;
@@ -184,6 +189,14 @@
 			heightTowerParts["heightTowerBottom"] = 30;
 			
 			changeRectTower(fieldObj["C_TOTAL_POLE_HT_W_ANT_FT"], coefOfInitChange, svgArrowsHeight, maxFieldValue, heightTowerParts);
+		}
+		
+		function setTheInitialSvgSize(svgArrowsHeight){
+			var svgArrows = document.getElementById("svgArrows");
+			var svgArrowsVB = svgArrows.getAttribute("viewBox").split(" ");
+			svgArrowsVB[3] = String(svgArrowsHeight);
+			svgArrows.setAttribute("viewBox", svgArrowsVB.join(" "));
+			svgArrows.setAttribute("height", svgArrowsHeight);
 		}
 		
 		function changeRectTower (fieldObjTower, coefOfInitChange, svgArrowsHeight, maxFieldValue, heightTowerParts) {
@@ -331,16 +344,25 @@
 						
 			$('g').each(function(i,elem) {
 				var gTransform = elem.getAttribute("transform");
-				var gTransformArray = gTransform.split(",");
-				var gTransformY = parseFloat(gTransformArray[1].replace(")", ""));
 				
-				var arrow = $(elem).children("use")[0];
-				var arrowHeight = parseFloat(arrow.getAttribute("height"));
-				var arrowTip = gTransformY;
-				var newTransformY = arrowTip * coefScale;
-				var newTransform = gTransformArray[0] + "," + newTransformY + ")";
+				if (gTransform.indexOf(" ") != -1){
+					var gTransformArray = gTransform.split(" ");
+				}else {
+					var gTransformArray = gTransform.split(",");
+				};
 				
-				elem.setAttributeNS(null, "transform", newTransform);
+				//var gTransformArray = gTransform.split(",");
+				if (gTransformArray.length != 1) {
+					var gTransformY = parseFloat(gTransformArray[1].replace(")", ""));
+
+					var arrow = $(elem).children("use")[0];
+					var arrowHeight = parseFloat(arrow.getAttribute("height"));
+					var arrowTip = gTransformY;
+					var newTransformY = arrowTip * coefScale;
+					var newTransform = gTransformArray[0] + "," + newTransformY + ")";
+
+					elem.setAttributeNS(null, "transform", newTransform);
+				};
 			});
 		}
 		
