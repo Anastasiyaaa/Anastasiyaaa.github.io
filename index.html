@@ -1,411 +1,387 @@
+
 <!DOCTYPE html>
 <html>
 <head>
 	<script src="https://code.jquery.com/jquery-3.3.1.js"></script>
-	<script>		
-		var BASE_URL = "https://dev-mtrac.mobilitie.com/api/v3/";
-		//var BASE_URL = "https://mtrac.mobilitie.com/api/v3/";
-		var ARREY_FIELDS = ["XITOR_KEY", "C_TOTAL_POLE_HT_W_ANT_FT", "C_GQ_SCIP_ANTENNA_HEIGHT_FT", "C_OFFICIAL_RF_RAD_CENTER_RAD_FT", "C_GQ_SCP_RF_RAD_MEASURE_FT", "C_CND_OFC_TWR_HT_FT", "C_GQ_SCIP_POLE_HEIGHT_FT", "C_HEIGHT_OF_MW_ANTENNA_FT", "C_GQ_SCP_MW_RAD_CENTER_FT"];
-		var PAIRS_OF_FIELDS = {
-			"C_GQ_SCIP_ANTENNA_HEIGHT_FT": "C_TOTAL_POLE_HT_W_ANT_FT",
-			"C_GQ_SCP_RF_RAD_MEASURE_FT": "C_OFFICIAL_RF_RAD_CENTER_RAD_FT",
-			"C_GQ_SCIP_POLE_HEIGHT_FT": "C_CND_OFC_TWR_HT_FT",
-			"C_GQ_SCP_MW_RAD_CENTER_FT": "C_HEIGHT_OF_MW_ANTENNA_FT"
-		};
-		//LightSalmon, lightGreen, yellow, lightBlue, lightPink	
-		var COLORS = ["#FFA07A", "#90EE90", "#FFFF00", "#ADD8E6", "#FFB6C1"]; 
-		var SCALE = [0.25, 0.5, 1.0, 1.5, 3, 6, 12];
-		var scaleIndex = 2;
-		var amendmentTextY = 25;
+	<script>
+		var baseurl = "";
+		let arreyFields = ['XITOR_KEY', 'VRE_TOP_HEIGHT', 'VRE_BOTTOM_HEIGHT', 'VRE_STATUS'];
+		let ARREY_TENANT_FIELDS = ['XITOR_KEY', 'T_TENANT_CATEGORY_AND_ID', 'T_CARRIER_CATEGORY_CODE'];
 		
+		//LightSalmon, lightGreen, LightGoldenrod1, lightBlue, lightPink, LightSlateBlue	
+		var COLORS = ['#FFA07A', '#90EE90', '#FFEC8B', '#ADD8E6', '#FFB6C1', '#8470FF']; 
+		var proj_xitor_type;
+		var cand_xitor_type;
+		var vre_xitor_type;
+		var tenant_xitor_type;
+		var autoris;
+
 		function getParam() {
-			var strUrlParam = window.location.search.replace( '?', '').split('&');
-			
-			for (var i = 0; i < strUrlParam.length; i++) {
-				var str_param = strUrlParam[i].split('=');
+			let strUrlParam = window.location.search.replace( '?', '').split('&');
+			let cand_xitor_key = '';
+			for (let i = 0; i < strUrlParam.length; i++) {
+				let str_param = strUrlParam[i].split('=');
 				if (str_param[0] === 'autoris' && str_param[1]){
-					var autoris = decodeURIComponent(str_param[1]);
+					autoris = decodeURIComponent(str_param[1]);
 				}
-				if(str_param[0] === 'xitor_id' && str_param[1]){
-					var xitor_id = decodeURIComponent(str_param[1]);
+				if(str_param[0] === 'url' && str_param[1]){
+					 baseurl += "https://" + decodeURIComponent(str_param[1]) + ".mobilitie.com/api/v3/";
+ 				}
+				if (str_param[0] === 'cand_xitor_type' && str_param[1]) {
+					cand_xitor_type = decodeURIComponent(str_param[1]);
+					arreyFields.push(cand_xitor_type + '.C_CANDIDATE_NAME');
+					arreyFields.push(cand_xitor_type + '.C_HIGHEST_AVAILABLE_TOWER_HEIGHT');
+					arreyFields.push(cand_xitor_type + '.C_TOTAL_POLE_HT_W_ANT_FT');
 				}
-				if(str_param[0] === 'xitor_type' && str_param[1]){
-					var xitor_type = decodeURIComponent(str_param[1]);
+				if (str_param[0] === 'proj_xitor_type') {
+					proj_xitor_type = decodeURIComponent(str_param[1]);
+					arreyFields.push(proj_xitor_type + '.XITOR_KEY');
+					arreyFields.push(proj_xitor_type + '.P_RELATED_TENANT_ID');
+				}
+				if (str_param[0] === 'vre_xitor_type' && str_param[1]) {
+					vre_xitor_type = decodeURIComponent(str_param[1]);
+				}
+				if (str_param[0] === 'tenant_xitor_type' && str_param[1]) {
+					tenant_xitor_type = decodeURIComponent(str_param[1]);
+				}
+				if (str_param[0] === 'cand_xitor_key') {
+					cand_xitor_key = decodeURIComponent(str_param[1])
 				}
 			}
-			getDataViaApi(autoris, xitor_id, xitor_type);
+			getDataViaApi(autoris, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key);
 		}
 		
-		function getDataViaApi(logPass, trackor_id, trackor_type){
-			
-			var vUrlLabelFields = BASE_URL + "trackor_types/" + trackor_type;
-			var vUrlValueFields = BASE_URL + "trackors/" + trackor_id;
-			var strPasLog = "Basic " + logPass;
-			var dataFieldLabel;
-			var dataFieldValue;
-			
-			jQuery.ajax({
-				method: "GET",
-				url: vUrlLabelFields,
-				headers: {
-					"Accept":"application/json",
-					"Authorization": strPasLog
-				},
-				data: { 
-					fields: ARREY_FIELDS.join(',')
-				},
-				success: function(data) {
-					dataFieldLabel = data;
-					queryCompletionCheck(dataFieldValue, dataFieldLabel);
-				}
-			});
+		function getDataViaApi(logPass, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key) {
+			let vUrlValueFields = baseurl + 'trackor_types/' + vre_xitor_type + '/trackors';
+			let strPasLog = "Basic " + logPass;
+
+			let dataForApi = {};
+			dataForApi['fields'] = arreyFields.join(',');
+			dataForApi[cand_xitor_type + '.XITOR_KEY'] = cand_xitor_key;
 			
     		jQuery.ajax({
 				method: "GET",
 				url: vUrlValueFields,
 				headers: {
-					"Accept":"application/json",
+					"Accept": "application/json",
 					"Authorization": strPasLog
 				},
-				data: { 
-					fields: ARREY_FIELDS.join(',')
-				},
+				data: dataForApi,
 				success: function(data) {
-					dataFieldValue = data;
-					queryCompletionCheck(dataFieldValue, dataFieldLabel);
+					if(data.length > 0) {
+						tenantKeySearch(data);
+					} 					
 				}
 			});
 		}
 		
-		function queryCompletionCheck(dataFieldValue, dataFieldLabel){
-			if (dataFieldValue != undefined && dataFieldLabel != undefined){
-				creatingFieldObj(dataFieldValue, dataFieldLabel);
+		function tenantKeySearch(dataFieldValue) {
+			let strTenants = '';
+			for (let dataObj in dataFieldValue) {
+				if (dataFieldValue[dataObj][proj_xitor_type + '.P_RELATED_TENANT_ID']) {
+					strTenants += dataFieldValue[dataObj][proj_xitor_type + '.P_RELATED_TENANT_ID'] + ', ';
+				}
+			}
+			if (strTenants) {
+				strTenants = strTenants.substr(0, strTenants.length - 2);
+				getDataTenantViaApi(strTenants, dataFieldValue);
+			} else {
+				creationSingleObject(null, dataFieldValue);
 			}
 		}
+
+		function getDataTenantViaApi(strTenants, dataFieldValue) {
+			var vUrlValueFields = baseurl + 'trackor_types/' + tenant_xitor_type + '/trackors';
+			var strPasLog = "Basic " + autoris;
+
+			jQuery.ajax({
+				method: "GET",
+				url: vUrlValueFields,
+				headers: {
+					"Accept": "application/json",
+					"Authorization": strPasLog
+				},
+				data: {
+					fields: ARREY_TENANT_FIELDS.join(','),
+					xitor_key: strTenants
+				},
+				success: function(data) {
+					creationSingleObject(data, dataFieldValue);
+				}
+			});
+		}
 		
-		function creatingFieldObj(dataFieldValue, dataFieldLabel) {
-			var newFieldObj = {};
-			var flag = 0;
-			for (var fieldLabelObj in dataFieldLabel) {
-			
-				if (dataFieldLabel[fieldLabelObj].name === "XITOR_KEY") {
-					var fieldName = "TRACKOR_KEY";
-					var fieldValue = dataFieldValue[fieldName];
-				} else {
-					var fieldName = dataFieldLabel[fieldLabelObj].name;
-					var fieldValue = parseFloat(dataFieldValue[fieldName]);
-					if (!isNaN(fieldValue)){
-						flag = 1;
+		function creationSingleObject(dataTenant, dataBasic) {
+			for(let dataBasicObj in dataBasic) {
+				let tenantKey = dataBasic[dataBasicObj][proj_xitor_type + '.P_RELATED_TENANT_ID'];
+				if (tenantKey) {
+					for(let dataTenantObj in dataTenant) {
+						let fieldsOfTenantData = dataTenant[dataTenantObj];
+						if (fieldsOfTenantData['TRACKOR_KEY'] === tenantKey) {
+							for (tenantField in ARREY_TENANT_FIELDS) {
+								let fieldName = ARREY_TENANT_FIELDS[tenantField];
+								if (fieldName !== 'XITOR_KEY') {
+									dataBasic[dataBasicObj][tenant_xitor_type + '.' + fieldName] = fieldsOfTenantData[fieldName];
+								}
+							}
+						}
 					}
 				}
-				var fieldLabel = dataFieldLabel[fieldLabelObj].label;
-				
-				newFieldObj[fieldName] = {
-					"label": fieldLabel,
-					"value": fieldValue
-				};
 			}
-			if (flag === 1){
-				searchMaximum(newFieldObj);
-			} else {
-				var captionCand = document.getElementById("pСaption");
-				captionCand.textContent = newFieldObj["TRACKOR_KEY"].value;
-				document.getElementById('buttonsScale').style.display = 'none';
-				var svgArrowsHeight = getTheInitialHeight();
-				setTheInitialSvgSize(svgArrowsHeight);
-			}
-			
+			draw(dataBasic);
 		}
-		
-		function searchMaximum(fieldObj){
-			var maxValue = 0;
-			for (var fieldKey in fieldObj){
-				if (fieldKey != "TRACKOR_KEY"){
-					var fieldValue = fieldObj[fieldKey].value;
-					maxValue = checkedMaximum(fieldValue, maxValue);
+
+		function draw(dataFields) {
+
+			let captionCand = document.getElementById("pCaption");
+			captionCand.textContent = dataFields[0][cand_xitor_type + '.C_CANDIDATE_NAME'];
+
+			let availableHeight = getAvailableHeight();
+			let availableCentralHeight = availableHeight - 50 - 50;
+			let centralPart = document.getElementById('centralPart');
+			let centralPartArrD = centralPart.getAttribute('d').split(' ');
+			centralPartArrD[12] = String(availableCentralHeight);
+			centralPartArrD[15] = String(availableCentralHeight + 5);
+			centralPartArrD[17] = String(availableCentralHeight);
+			centralPartArrD[20] = String(availableCentralHeight);
+			centralPart.setAttribute('d', centralPartArrD.join(' '));
+
+			let bottomPart = document.getElementById('bottomPart');
+			let bottomPartTranslate = 'translate(0,' + (availableCentralHeight + 30) + ')';
+			bottomPart.setAttribute('transform', bottomPartTranslate);
+
+			let svgVreTower = document.getElementById("svgVreTower");
+			let svgVreTowerVB = svgVreTower.getAttribute("viewBox").split(" ");
+			svgVreTowerVB[3] = String(availableHeight);
+			svgVreTower.setAttribute("viewBox", svgVreTowerVB.join(" "));
+			svgVreTower.setAttribute("height", availableHeight);
+
+			let svgTower = document.getElementById("svgTower");
+			let svgTowerVB = svgTower.getAttribute("viewBox").split(" ");
+			svgTowerVB[3] = String(availableHeight - 10);
+			svgTower.setAttribute("viewBox", svgTowerVB.join(" "));
+			svgTower.setAttribute("height", availableHeight - 10);
+			
+			addTotalPoleDivision(dataFields);
+
+			let avaliableHeightForDivisions = availableCentralHeight - 60;
+			let minLineVreY = 50 + 10 + 60 / 2;
+			let maxLineVreY = minLineVreY + avaliableHeightForDivisions;
+
+			let maxNumOfNums = avaliableHeightForDivisions / 30;
+
+			let maxTopValue = maxValueSearch(dataFields);
+			let minBottomValue = minValueSearch(dataFields);
+			let difference = maxTopValue - minBottomValue;
+			let initialValOfDivision = difference / maxNumOfNums;
+			
+			let valOfDivision = getValOfDivision(initialValOfDivision);
+			let minMultipleOfFive = getMinMultipleOfFive(minBottomValue);
+			let numOfGaps = Math.ceil((maxTopValue - minMultipleOfFive) / valOfDivision);
+			let divisionHeight = avaliableHeightForDivisions / numOfGaps
+			addDivisions(minMultipleOfFive, maxTopValue, valOfDivision, maxLineVreY, divisionHeight, numOfGaps);
+			let maxDivisionValue = numOfGaps * valOfDivision + minMultipleOfFive;
+			addRectangle(dataFields, numOfGaps * valOfDivision, avaliableHeightForDivisions, maxDivisionValue);
+			addHighestAvailableTower(dataFields, numOfGaps * valOfDivision, avaliableHeightForDivisions, maxDivisionValue);
+		}
+
+		function getValOfDivision(initialValOfDivision) {
+			let valOfDivision = Math.ceil(initialValOfDivision);
+			do {
+				valOfDivision ++;
+			} while (valOfDivision % 5 > 0); 
+
+			return valOfDivision;
+		}
+
+		function getMinMultipleOfFive(minValue) {
+			minValue = Math.floor(minValue);
+			while (minValue % 5 > 0) {
+				minValue --;
+			}
+			return minValue;
+		}
+
+		function addTotalPoleDivision(dataFields) {
+			let totalPole = dataFields[0][cand_xitor_type + '.C_TOTAL_POLE_HT_W_ANT_FT'];
+			drawDivision(totalPole, 20);
+		}
+
+		function addHighestAvailableTower(dataTrackors, differenceMaxMinVal, avaliableHeightForDivisions, maxDivisionValue) {
+			let highestAvailableTower = dataTrackors[0][cand_xitor_type + '.C_HIGHEST_AVAILABLE_TOWER_HEIGHT'];
+			if(highestAvailableTower) {
+				if (maxDivisionValue >= highestAvailableTower) {
+					let lineY = (maxDivisionValue - highestAvailableTower) * avaliableHeightForDivisions / differenceMaxMinVal + 90;
+
+					let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+					line.setAttribute('stroke', 'red');
+					line.setAttribute('stroke-width', '2');
+					line.setAttribute('x1', '50');
+					line.setAttribute('x2', '185');
+					line.setAttribute('y1', lineY);
+					line.setAttribute('y2', lineY);
+
+					svgVreTower.appendChild(line);
 				}
 			}
-			searchOfObjects(fieldObj, maxValue);
+			creatingTrReference(highestAvailableTower, 'Highest Available Height', null, 'highestAvailableTowerF', 'highestAvailableTowerS');
+		}
+
+		function addDivisions(minValue, maxValue, valOfDivision, maxLineVreY, divisionHeight, numOfGaps) {
+			let currentValue = minValue;
+			let currentLineVreY = maxLineVreY;
+
+			for(let i = 0; i <= numOfGaps; i ++) {
+				drawDivision(String(currentValue), currentLineVreY);
+				currentValue += valOfDivision;
+				currentLineVreY -= divisionHeight;
+			}
+		}
+
+		function drawDivision(textValue, lineVreY) {
+			let lineWidth = 10;
+
+			let g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+			svgVreTower.appendChild(g);
+
+			let text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+			text.setAttributeNS(null, 'font', '20px');
+			text.setAttributeNS(null, 'x', '0');
+			text.setAttributeNS(null, 'y', '21');
+			text.textContent = textValue;
+				
+			g.appendChild(text);
+
+			let textWidth = text.getBBox().width;
+			let textHeight = Math.ceil(text.getBBox().height);
+			
+			let offsetX = 50 - lineWidth - textWidth;
+
+			let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+			line.setAttribute('stroke', 'black');
+			line.setAttribute('stroke-width', '1');
+			line.setAttribute('x1', textWidth);
+			line.setAttribute('x2', textWidth + lineWidth);
+			line.setAttribute('y1', (textHeight + 6) / 2);
+			line.setAttribute('y2', (textHeight + 6) / 2);
+
+			g.appendChild(line);
+			let translateG = "translate(" + offsetX + "," + (lineVreY - (textHeight + 6) / 2)  + ")";
+			g.setAttributeNS(null, "transform", translateG);
+		}
+
+		function addRectangle(dataTrackors, differenceMaxMinVal, avaliableHeightForDivisions, maxDivisionValue) {
+			let colorIndex = -1;
+			for(let dataTrackor in dataTrackors) {
+				colorIndex = (colorIndex < COLORS.length - 1) ? ++colorIndex : 0;
+
+				let vreBottomHeigt = dataTrackors[dataTrackor]['VRE_BOTTOM_HEIGHT'];
+				let vreTopHeight = dataTrackors[dataTrackor]['VRE_TOP_HEIGHT'];
+				if (vreBottomHeigt && vreTopHeight) {
+					let rectY = (maxDivisionValue - vreTopHeight) * avaliableHeightForDivisions / differenceMaxMinVal + 90;
+
+					let vreHeight = vreTopHeight - vreBottomHeigt;
+					let rectHeight = vreHeight * avaliableHeightForDivisions / differenceMaxMinVal;
+					drawRectangle(rectY, rectHeight, COLORS[colorIndex]);
+				}
+				textForFirstColumn = vreTopHeight + ' - ' + vreBottomHeigt + ' ft';	
+				textForSecontColumn = dataTrackors[dataTrackor]['TRACKOR_KEY'] + ' ' + dataTrackors[dataTrackor]['VRE_STATUS'];
+				creatingTrReference(textForFirstColumn, textForSecontColumn, COLORS[colorIndex], 'h', 'd');
+				
+				let projectId = dataTrackors[dataTrackor][proj_xitor_type + '.TRACKOR_KEY'];
+				if(projectId) {
+					creatingTrReference('Project ID', projectId, null, 'childRefFirst', 'childRefSecond');
+
+					let tenantCategoryAndId= dataTrackors[dataTrackor][tenant_xitor_type + '.T_TENANT_CATEGORY_AND_ID'];
+					if(tenantCategoryAndId) {
+						creatingTrReference('Tenant Category and ID', tenantCategoryAndId, null, 'childRefFirst', 'childRefSecond');
+					}
+
+					let tenantCategoryCode = dataTrackors[dataTrackor][tenant_xitor_type + '.T_CARRIER_CATEGORY_CODE'];
+					if(tenantCategoryCode) {
+						creatingTrReference('Tenant Entity Category Code', tenantCategoryCode, null, 'childRefFirst', 'childRefSecond');
+					}
+				}
+			}
+		}
+
+		function drawRectangle(rectY, rectHeight, color) {
+			let rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+	
+			rect.setAttribute('x', '95');
+			rect.setAttribute('y', rectY);
+			rect.setAttribute('width', '90');
+			rect.setAttribute('height', rectHeight);
+			rect.style.fill = color;
+
+			svgVreTower.appendChild(rect);
+		}
+
+		function creatingTrReference(textFirst, textSecond, color, classFirst, classSecond) {
+			let tblReference = document.getElementById('tblReference');
+
+			let rowReference = document.createElement('TR');
+				
+			let tdFirst = document.createElement('TD');
+			tdFirst.setAttribute('class', classFirst);
+			tdFirst.style.backgroundColor = color;
+			tdFirst.appendChild(document.createTextNode(textFirst));
+			rowReference.appendChild(tdFirst);
+			
+			let tdSecond = document.createElement('TD');
+			tdSecond.setAttribute("class", classSecond);
+			tdSecond.appendChild(document.createTextNode(textSecond));
+			rowReference.appendChild(tdSecond);
+			
+			tblReference.appendChild(rowReference);
+		}
+
+		function getAvailableHeight() {
+			let pCaption = document.getElementById("pCaption");
+			let pCaptionIndent = pCaption.getBoundingClientRect();
+			let divDiagram = document.getElementById("divDiagram");
+			let divDiagramIndent = divDiagram.getBoundingClientRect();
+			
+			let availableHeight = document.documentElement.clientHeight - pCaptionIndent.top - pCaptionIndent.height - divDiagramIndent.top;
+			return availableHeight;
+		}
+
+		function maxValueSearch(dataTrackors){
+			let maxValue = 0;
+			for (let trckorObj in dataTrackors){
+				if (dataTrackors[trckorObj]['VRE_TOP_HEIGHT']) {
+					let topValue = Number(dataTrackors[trckorObj]['VRE_TOP_HEIGHT']);
+					maxValue = checkedMax(topValue, maxValue);
+				}
+			}
+			return maxValue;
 		}
 		
-		function checkedMaximum (fieldValue, maxValue) {
+		function checkedMax(fieldValue, maxValue) {
 			if (fieldValue && fieldValue > maxValue) {
 				maxValue = fieldValue;
 			}
 			return maxValue;
 		}
-		
-		function searchOfObjects(fieldObj, maxFieldValue) {
 
-			var colorIndex = -1;
-			
-			var captionCand = document.getElementById("pСaption");
-			captionCand.textContent = fieldObj["TRACKOR_KEY"].value;
-			
-			var symArrowObj = document.getElementById("symRight");
-			var symArrowHeight = parseFloat(symArrowObj.getAttribute("height"));
-			
-			var svgArrowsHeight = getTheInitialHeight();
-			setTheInitialSvgSize(svgArrowsHeight);
-			
-			var heightMaxFieldUpd = svgArrowsHeight - symArrowHeight/2;
-			var coefOfInitChange = heightMaxFieldUpd / maxFieldValue;
-			
-			//changeRectTower(fieldObj["C_TOTAL_POLE_HT_W_ANT_FT"], coefOfInitChange, svgArrowsHeight, maxFieldValue);
-			var divTblReference = document.getElementById("tblReference");
-			
-			for (var firstField in PAIRS_OF_FIELDS) {
-				firstFieldName = firstField;
-				secondFieldName = PAIRS_OF_FIELDS[firstField];
-				
-				var newTblReference = document.createElement("table");
-				var newTbodyReference = document.createElement("tbody");
-				
-				colorIndex = (colorIndex < COLORS.length - 1) ? ++colorIndex : 0;
-				if (fieldObj[firstFieldName].value) {
-					
-					var arrowType = "#symLeft";
-					var gElementX = 0;
-					var textX = 2;
-					creatingObjects(svgArrowsHeight, coefOfInitChange, symArrowHeight, colorIndex, fieldObj[firstFieldName], newTbodyReference, arrowType, gElementX, textX);
-				}
-				if (fieldObj[secondFieldName].value) {
-				
-					var arrowType = "#symRight";
-					var gElementX = 255;
-					var textX = 25;
-					creatingObjects(svgArrowsHeight, coefOfInitChange, symArrowHeight, colorIndex, fieldObj[secondFieldName], newTbodyReference, arrowType, gElementX, textX);
-				}
-				
-				newTblReference.appendChild(newTbodyReference);
-				divTblReference.appendChild(newTblReference);
+		function minValueSearch(dataTrackors){
+			let minValue = Number.MAX_VALUE;
+			for (let trckorObj in dataTrackors){
+				let bottomValue = Number(dataTrackors[trckorObj]['VRE_BOTTOM_HEIGHT']);
+				minValue = checkedMin(bottomValue, minValue);
 			}
-			
-			var heightTowerParts = {};
-			heightTowerParts["heightTowerTop"] = 20;
-			heightTowerParts["heightTowerCenter"] = 50;
-			heightTowerParts["heightTowerBottom"] = 30;
-			
-			changeRectTower(fieldObj["C_TOTAL_POLE_HT_W_ANT_FT"], coefOfInitChange, svgArrowsHeight, maxFieldValue, heightTowerParts);
+			return minValue;
 		}
 		
-		function getTheInitialHeight(){
-			var pСaption = document.getElementById("pСaption");
-			var pСaptionIndent = pСaption.getBoundingClientRect();
-			var divDiagram = document.getElementById("divDiagram");
-			var divDiagramIndent = divDiagram.getBoundingClientRect();
-			
-			var initialHeight = document.documentElement.clientHeight - pСaptionIndent.top - pСaptionIndent.height - divDiagramIndent.top;
-			return initialHeight;
-		}
-		
-		function setTheInitialSvgSize(svgHeight){
-			var svgArrows = document.getElementById("svgArrows");
-			var svgArrowsVB = svgArrows.getAttribute("viewBox").split(" ");
-			svgArrowsVB[3] = String(svgHeight);
-			svgArrows.setAttribute("viewBox", svgArrowsVB.join(" "));
-			svgArrows.setAttribute("height", svgHeight);
-			
-			var svgTower = document.getElementById("svgTower");
-			var svgTowerVB = svgTower.getAttribute("viewBox").split(" ");
-			svgTowerVB[3] = String(svgHeight);
-			svgTower.setAttribute("viewBox", svgTowerVB.join(" "));
-			svgTower.setAttribute("height", svgHeight);
-		}
-		
-		function changeRectTower (fieldObjTower, coefOfInitChange, svgArrowsHeight, maxFieldValue, heightTowerParts) {
-			heightTower = fieldObjTower.value ? fieldObjTower.value : maxFieldValue;
-			
-			var svgTower = document.getElementById("svgTower");
-			var svgTowerHeight = heightTower*coefOfInitChange;
-			var svgTowerY = svgArrowsHeight - svgTowerHeight;
-			
-			var svgTowerVB = svgTower.getAttribute("viewBox").split(" ");
-			svgTowerVB[3] = String(svgTowerHeight);
-			svgTower.setAttribute("viewBox", svgTowerVB.join(" "));
-			
-			svgTower.setAttribute("height", svgTowerHeight);
-			svgTower.setAttribute("y", svgTowerY);
-						
-			var rectTopHeight = String(heightTowerParts["heightTowerTop"]) + "%";
-
-			var rectTopLeft = document.getElementById("rectTopLeft");
-			rectTopLeft.setAttribute("height", rectTopHeight);
-			
-			var rectTopCenter = document.getElementById("rectTopLeft");
-			rectTopCenter.setAttribute("height", rectTopHeight);
-			
-			var rectTopRight = document.getElementById("rectTopRight");
-			rectTopRight.setAttribute("height", rectTopHeight);
-			
-			var rectTopLittleHeight = heightTowerParts["heightTowerTop"] / 6;
-			var rectTopLittleHeightStr = String(rectTopLittleHeight) + "%";
-			var rectTopLittleY = String((heightTowerParts["heightTowerTop"] - rectTopLittleHeight) / 2) + "%";
-			
-			var rectTopLeftLittle = document.getElementById("rectTopLeftLittle");
-			rectTopLeftLittle.setAttribute("height", rectTopLittleHeightStr);
-			rectTopLeftLittle.setAttribute("y", rectTopLittleY);
-			
-			var rectTopRightLittle = document.getElementById("rectTopRightLittle");
-			rectTopRightLittle.setAttribute("height", rectTopLittleHeightStr);
-			rectTopRightLittle.setAttribute("y", rectTopLittleY);
-			
-			var rectCenterHeight = String(heightTowerParts["heightTowerCenter"]) + "%";
-			var rectCenterY = rectTopHeight;
-			
-			var rectCenter = document.getElementById("rectCenter");
-			rectCenter.setAttribute("height", rectCenterHeight);
-			rectCenter.setAttribute("y", rectCenterY);
-			
-			var rectBottomHeight = String(heightTowerParts["heightTowerBottom"]) + "%";
-			var rectBottomY = String(heightTowerParts["heightTowerTop"] + heightTowerParts["heightTowerCenter"]) + "%";
-			
-			var rectBottom = document.getElementById("rectBottom");
-			rectBottom.setAttribute("height", rectBottomHeight);
-			rectBottom.setAttribute("y", rectBottomY);
-		}
-		
-		function creatingObjects(svgArrowsHeight, coefOfInitChange, symArrowHeight, colorIndex, fieldObj, tbodyReference, arrowType, gElementX, textX) {
-			var fieldLabel = fieldObj.label;
-			var heightFt = parseFloat(fieldObj.value);
-			var heightMtr = heightFt * 0.3048;
-					
-			var arrowY = svgArrowsHeight - heightFt * coefOfInitChange - symArrowHeight/2;
-			var heightStr = heightFt.toFixed(1) + "/" + heightMtr.toFixed(1);
-					
-			creatingTrReference(tbodyReference, heightStr, fieldLabel, COLORS[colorIndex]);
-			var gElement = creatingG(arrowY, gElementX, arrowType, COLORS[colorIndex]);
-			creatingSvgObjects(arrowType, COLORS[colorIndex], gElement);
-			creatingSvgText(heightStr, textX, gElement);
-		}
-		
-		function creatingTrReference(tbodyReference, numberNode, strNode, color){
-			
-			var rowReference = document.createElement("TR");
-				
-			var tdNumber = document.createElement("TD");
-			tdNumber.setAttribute("class", "h");
-			tdNumber.style.backgroundColor = color;
-			tdNumber.appendChild(document.createTextNode(numberNode));
-			rowReference.appendChild(tdNumber);
-			
-			var tdStr = document.createElement("TD");
-			tdStr.setAttribute("class", "d");
-			tdStr.appendChild(document.createTextNode(strNode));
-			rowReference.appendChild(tdStr);
-			
-			tbodyReference.appendChild(rowReference);
-		}
-		
-		function creatingG (heightArrow, xArrow, symArrow, fillArrow) {
-			var gElement = document.createElementNS("http://www.w3.org/2000/svg", "g");
-			var translate = "translate(" + xArrow + "," + heightArrow + ")";
-			gElement.setAttributeNS(null, "transform", translate);
-			
-			document.getElementById("svgArrows").appendChild(gElement);
-			
-			return gElement;
-		}
-		
-		function creatingSvgObjects(symArrow, fillArrow, gElement) {
-			var polElement = document.createElementNS("http://www.w3.org/2000/svg", "use");
-			polElement.setAttributeNS(null, "href", symArrow);
-			polElement.setAttributeNS(null, "width", 125);
-			polElement.setAttributeNS(null, "height", 37.5);
-			polElement.style.fill = fillArrow;
-						
-			gElement.appendChild(polElement);
-		}
-		
-		function creatingSvgText(heightStr, xText, gElement) {
-			
-			var txtElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
-			txtElement.setAttributeNS(null, "x", xText);
-			txtElement.setAttributeNS(null, "y", amendmentTextY);
-			txtElement.style.fontWeight = "bold";
-			txtElement.textContent = heightStr;
-			
-			gElement.appendChild(txtElement);
-		}		
-		
-		function to_size(action) {
-			var currentCoefScale = SCALE[scaleIndex];
-			var symArrow = document.getElementById("symRight");
-			var shiftOfElements = parseFloat(symArrow.getAttribute("height")) / 2;
-			
-			if (action === "+" && scaleIndex < SCALE.length - 1) {
-				scaleIndex = scaleIndex + 1;
-				var newCoefScale = SCALE[scaleIndex];
-				var coefScale = newCoefScale/currentCoefScale;
-				//можно указать постоянный коэффициент
-				//coefScale = 2;
-				
-				recalculation(shiftOfElements, coefScale);
-				
-			}else if (action === "-" && scaleIndex > 0) {
-				scaleIndex = scaleIndex - 1;
-				var newCoefScale = SCALE[scaleIndex];
-				var coefScale = newCoefScale/currentCoefScale;
-				//можно указать постоянный коэффициент
-				//coefScale = 0.5;
-				
-				recalculation(shiftOfElements, coefScale);
+		function checkedMin(fieldValue, minValue) {
+			if (fieldValue && fieldValue < minValue) {
+				minValue = fieldValue;
 			}
+			return minValue;
 		}
-		function recalculation(shiftOfElements, coefScale){
-			recalculationSvg(shiftOfElements, coefScale, "svgArrows");
-			recalculationRectTower(shiftOfElements, coefScale);
-						
-			$('g').each(function(i,elem) {
-				var gTransform = elem.getAttribute("transform");
-				
-				if (gTransform.indexOf(" ") != -1){
-					var gTransformArray = gTransform.split(" ");
-				}else {
-					var gTransformArray = gTransform.split(",");
-				};
-				
-				//var gTransformArray = gTransform.split(",");
-				if (gTransformArray.length != 1) {
-					var gTransformY = parseFloat(gTransformArray[1].replace(")", ""));
 
-					var arrow = $(elem).children("use")[0];
-					var arrowHeight = parseFloat(arrow.getAttribute("height"));
-					var arrowTip = gTransformY;
-					var newTransformY = arrowTip * coefScale;
-					var newTransform = gTransformArray[0] + "," + newTransformY + ")";
-
-					elem.setAttributeNS(null, "transform", newTransform);
-				};
-			});
-		}
-		
-		function recalculationSvg(shiftOfElements, coefScale, element) {
-			var svgElement = document.getElementById(element);
-			var svgElementHeight = parseFloat(svgElement.getAttribute("height"));
-			var svgElementVB = svgElement.getAttribute("viewBox").split(" ");
-			var svgElementVBHeight = parseFloat(svgElementVB[3]);
-			svgElementVB[3] = String((svgElementVBHeight - shiftOfElements) * coefScale + shiftOfElements);
-			svgElement.setAttribute("viewBox", svgElementVB.join(" "));
-			svgElement.setAttribute("height", (svgElementHeight - shiftOfElements) * coefScale + shiftOfElements);
-		}
-		
-		function recalculationRectTower(shiftOfElements, coefScale) {
-			var svgTower = document.getElementById("svgTower")
-			var svgTowerHeight = parseFloat(svgTower.getAttribute("height"));
-			var svgTowerY = parseFloat(svgTower.getAttribute("y"));
-			var newSvgTowerHeight = svgTowerHeight * coefScale;
-			var newSvgTowerY = (svgTowerY - shiftOfElements) * coefScale + shiftOfElements;
-			
-			var svgTowerVB = svgTower.getAttribute("viewBox").split(" ");
-			svgTowerVB[3] = String(newSvgTowerHeight);
-			svgTower.setAttribute("viewBox", svgTowerVB.join(" "));
-			
-			svgTower.setAttribute("height", newSvgTowerHeight);
-			svgTower.setAttribute("y", newSvgTowerY);
-		}
-		
 	</script>
+
     <style type="text/css">
 		body {
 			display:flex;
@@ -422,23 +398,22 @@
         .diagram {
 			overflow: auto;
 			flex-grow: 1;
-			flex-shrink: ;
             margin-top: 0.5em;
         }
 		.heights {
 			overflow: auto;
 			flex-grow: 0;
 			flex-shrink: 0;
-			width: 40%;
+			width: 50%;
 		}
         .heights table {
             border-spacing: 1em;
         }
         .heights td.h {
             border: 0.1em solid black;
-            padding: 0.4em 0.6em; 
             font-weight: bold;
 			white-space: nowrap;
+			text-align: center;
         }
         .heights td.hh {
             padding: 0.4em 0.6em; 
@@ -446,80 +421,57 @@
 			white-space: nowrap;
         }
         .heights td.d {
-            padding-left: 1em;
+			font-weight: bold;
         }
+		.heights td.childRefFirst {
+			padding-left: 1em;
+			font-size: 18px;
+			white-space: nowrap;
+		}
+		.heights td.childRefSecond {
+			font-size: 18px;
+		}
+		.heights td.highestAvailableTowerF {
+			color: red;
+			font-weight: bold;
+			text-align: center;
+		}
+		.heights td.highestAvailableTowerS {
+			color: red;
+			font-weight: bold;
+		}
     </style>
 
 </head>
 <body onload="getParam()">
 <div class="diagram" align="center" id="divDiagram">
-	<p id="pСaption" style="margin:0;px;font-style:normal;font-weight:normal;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.07731885">Tower Diagram</p>
-	<div style="position:fixed;display:block;width:30px;left:2px;top:0px" id="buttonsScale">
-		<input onclick="to_size('+')" type="button" value="+" id="bnPlus" style="width:30px;height:25px">
-		<input onclick="to_size('-')" type="button" value="-" id="bnMinus" style="width:30px;height:25px;margin-top:2px">
-	</div>
-	<!--<?xml version="1.0" encoding="UTF-8" standalone="no"?>-->
-	<svg id="svgArrows" viewBox="0 0 380 667" width = "380" height = "667" style="position:relative;" xmlns="http://www.w3.org/2000/svg" version="1.0" encoding="UTF-8" standalone="no">
-		<symbol id="symRight" viewBox="0 0 125 37.5" width = "125" height = "37.5" style="position:absolute">
-			
-			<polygon points="125,30 125,7.5 25,7.5 25,0 0,18.75 25,37.5 25,30" style="stroke:#000000;stroke-width:0.5" id="polygon4187-4-5"></polygon>
-			
-		</symbol>
-		<symbol id="symLeft" viewBox="0 0 125 37.5" width = "125" height = "37.5" style="position: absolute;" >
-			
-			<polygon points="0,30 0,7.5 100,7.5 100,0 125,18.75 100,37.5 100,30 " style="stroke:#000000;stroke-width:0.5" id="polygon4187-4-5"></polygon>
-			
-		</symbol>
-		<svg id="svgTower" viewBox="0 0 130 667" width = "130" height = "667" x = "125" style="position: absolute;" >
-			<rect id="rectTopLeft"
-				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
-				ry=".12188"
-				height="20%"
-				width="30"
-				y="0"
-				x="1" />
-			<rect id="rectTopLeftLittle"
-				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
-				ry=".12188"
-				height="3%"
-				width="19"
-				y="8.126%"
-				x="31" />
-			<rect id="rectTopCenter"
-				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
-				ry=".12188"
-				height="20%"
-				width="30"
-				y="0"
-				x="50" />
-			<rect id="rectTopRightLittle"
-				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
-				ry=".12188"
-				height="3%"
-				width="19"
-				y="8.126%"
-				x="80" />
-			<rect id="rectTopRight"
-				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
-				ry=".12188"
-				height="20%"
-				width="30"
-				y="0"
-				x="99" />			
-			<rect id="rectCenter"
-				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
-				ry=".12188"
-				height="50%"
-				width="19"
-				y="20%"
-				x="55.5" />
-			<rect id="rectBottom"
-				style="stroke-linejoin:round;stroke:#000000;stroke-linecap:round;fill:none;stroke-width:2"
-				ry=".12188"
-				height="30%"
-				width="30"
-				y="70%"
-				x="50" />
+	<p id="pCaption" style="margin:0px;font-style:normal;font-weight:normal;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.07731885">VSE Diagram</p>
+	<svg id="svgVreTower" viewBox="0 0 200 667" width = "200" height = "667" style="position:relative;" xmlns="http://www.w3.org/2000/svg" version="1.0" encoding="UTF-8" standalone="no">
+		
+		<svg id = "svgTower" viewBox="0 0 60 667" width = "60" height = "667" x = "40" y = "10" style="position: absolute;" >
+
+			<path id = 'topPart'
+					d='M10 10 H 50
+						V 50
+						Q 40 55, 30 50 T 10 50
+						Z'
+					stroke='black'
+					fill='#FFD700'/>
+
+			<path id='centralPart'
+					d='M 10 15 Q 20 10 30 15 T 50 15 V 100 Q 40 105 30 100 T 10 100 Z'
+					stroke='black'
+					transform="translate(0, 40)"
+					fill='#FFD700'/>
+
+			<path id = 'bottomPart'
+					d='M10 15 Q 20 10, 30 15 T 50 15
+						V 55
+						H 10
+						Z'
+					stroke='black'
+					transform="translate(0, 130)"
+					fill='#FFD700'/>
 		</svg>
 		
 	</svg>
@@ -528,7 +480,7 @@
     <table id="tblReference">
         <tbody>
             <tr>
-                <td class="hh">ft / meters</td>
+                <td class="hh">top - bottom ft</td>
             </tr>
         </tbody>
     </table>
