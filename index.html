@@ -204,7 +204,11 @@
 
 		function addTotalPoleDivision(dataFields) {
 			let totalPole = dataFields[0][cand_xitor_type + '.C_TOTAL_POLE_HT_W_ANT_FT'];
-			drawDivision(totalPole, 20);
+			if(totalPole) {
+				let totalPoleRound = Math.round(Number(totalPole));
+				drawDivision(totalPoleRound, 20);
+			}
+			
 		}
 
 		function addHighestAvailableTower(dataTrackors, differenceMaxMinVal, avaliableHeightForDivisions, maxDivisionValue) {
