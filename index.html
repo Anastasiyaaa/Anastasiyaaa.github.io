@@ -21,10 +21,10 @@
 			let cand_xitor_key = '';
 			for (let i = 0; i < strUrlParam.length; i++) {
 				let str_param = strUrlParam[i].split('=');
-				if (str_param[0] === 'autoris' && str_param[1]){
+				if (str_param[0] === 'autoris' && str_param[1]) {
 					autoris = decodeURIComponent(str_param[1]);
 				}
-				if(str_param[0] === 'url' && str_param[1]){
+				if (str_param[0] === 'url' && str_param[1]) {
 					 baseurl += "https://" + decodeURIComponent(str_param[1]) + ".mobilitie.com/api/v3/";
  				}
 				if (str_param[0] === 'cand_xitor_type' && str_param[1]) {
@@ -71,7 +71,7 @@
 				},
 				data: dataForApi,
 				success: function(data) {
-					if(data.length > 0) {
+					if (data.length > 0) {
 						let dataWithoutTerminatedVre = deleteTerminatedVre(data);
 						tenantKeySearch(dataWithoutTerminatedVre);
 					} else {
@@ -84,9 +84,9 @@
 		}
 		
 		function deleteTerminatedVre(dataFieldValue) {
-			for(let dataField in dataFieldValue) {
+			for (let dataField in dataFieldValue) {
 				let status = dataFieldValue[dataField]['VRE_STATUS'];
-				if(status === 'Terminated') {
+				if (status === 'Terminated') {
 					delete dataFieldValue[dataField];
 				}
 			}
@@ -130,10 +130,10 @@
 		}
 		
 		function creationSingleObject(dataTenant, dataBasic) {
-			for(let dataBasicObj in dataBasic) {
+			for (let dataBasicObj in dataBasic) {
 				let tenantKey = dataBasic[dataBasicObj][proj_xitor_type + '.P_RELATED_TENANT_ID'];
 				if (tenantKey) {
-					for(let dataTenantObj in dataTenant) {
+					for (let dataTenantObj in dataTenant) {
 						let fieldsOfTenantData = dataTenant[dataTenantObj];
 						if (fieldsOfTenantData['TRACKOR_KEY'] === tenantKey) {
 							for (tenantField in ARREY_TENANT_FIELDS) {
@@ -172,7 +172,7 @@
 
 			let totalPole = addTotalPoleDivision(dataFields, maxTopValue);
 
-			if(totalPole - maxDivisionValue > 2 * valOfDivision && minMultipleOfFive > 2 * valOfDivision)  {
+			if (totalPole - maxDivisionValue > 2 * valOfDivision && minMultipleOfFive > 2 * valOfDivision)  {
 				//upper and lower breaks
 				let upperIndent = 90;
 				drawTopPart();
@@ -185,7 +185,7 @@
 				addRectangle(dataFields, numOfGaps * valOfDivision, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
 				addHighestAvailableTower(dataFields, numOfGaps * valOfDivision, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
 				
-			} else if(totalPole - maxDivisionValue > 2 * valOfDivision) {
+			} else if (totalPole - maxDivisionValue > 2 * valOfDivision) {
 				//upper break
 				let upperIndent = 90;
 
@@ -204,7 +204,7 @@
 				addRectangle(dataFields, maxDivisionValue, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
 				addHighestAvailableTower(dataFields, maxDivisionValue, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
 
-			} else if(minMultipleOfFive > 2 * valOfDivision) {
+			} else if (minMultipleOfFive > 2 * valOfDivision) {
 				//lower break
 				let upperIndent = 20;
 				availableTopHeightPx = availableHeightPx - 50 - 10;
@@ -262,7 +262,7 @@
 			captionCand.textContent = candId;
 
 			let candName = dataFields[keyFirstElement][cand_xitor_type + '.C_CANDIDATE_NAME'];
-			if(candName) {
+			if (candName) {
 				let captionCand = document.getElementById('pCaptionName');
 				captionCand.textContent = candName;
 			}			
@@ -282,9 +282,9 @@
 			return availableHeightPx;
 		}
 
-		function maxValueSearch(dataTrackors){
+		function maxValueSearch(dataTrackors) {
 			let maxValue = 0;
-			for (let trckorObj in dataTrackors){
+			for (let trckorObj in dataTrackors) {
 				if (dataTrackors[trckorObj]['VRE_TOP_HEIGHT']) {
 					let topValue = Number(dataTrackors[trckorObj]['VRE_TOP_HEIGHT']);
 					maxValue = checkedMax(topValue, maxValue);
@@ -300,9 +300,9 @@
 			return maxValue;
 		}
 
-		function minValueSearch(dataTrackors){
+		function minValueSearch(dataTrackors) {
 			let minValue = Number.MAX_VALUE;
-			for (let trckorObj in dataTrackors){
+			for (let trckorObj in dataTrackors) {
 				let bottomValue = Number(dataTrackors[trckorObj]['VRE_BOTTOM_HEIGHT']);
 				minValue = checkedMin(bottomValue, minValue);
 			}
@@ -334,8 +334,9 @@
 		}
 
 		function addTotalPoleDivision(dataFields, maxTopRect) {
-			let totalPole = dataFields[0][cand_xitor_type + '.C_TOTAL_POLE_HT_W_ANT_FT'];
-			if(totalPole) {
+			let keyFirstElement = Object.keys(dataFields)[0];
+			let totalPole = dataFields[keyFirstElement][cand_xitor_type + '.C_TOTAL_POLE_HT_W_ANT_FT'];
+			if (totalPole) {
 				let totalPoleRound = Number(Number(totalPole).toFixed(1));
 				drawDivision(totalPoleRound, 20);
 				return totalPoleRound;
@@ -359,7 +360,7 @@
 
 		function drawTopPart(heightPart) {
 			let d = 'M 10 10 H 50 V 50 Q 40 55 30 50 T 10 50 Z';
-			if(heightPart) {
+			if (heightPart) {
 				let dArr = d.split(' ');
 				dArr[6] = String(heightPart);
 				dArr[9] = String(heightPart + 5);
@@ -380,7 +381,7 @@
 
 		function drawCenterPart(availableCentralHeightPx) {
 			let d = 'M 10 15 Q 20 10 30 15 T 50 15 V 100 Q 40 105 30 100 T 10 100 Z';
-			if(availableCentralHeightPx) {
+			if (availableCentralHeightPx) {
 				let dArr = d.split(' ');
 				dArr[12] = String(availableCentralHeightPx);
 				dArr[15] = String(availableCentralHeightPx + 5);
@@ -402,7 +403,7 @@
 
 		function drawBottomPart(yShift, heightPart) {
 			let d = 'M 10 15 Q 20 10 30 15 T 50 15 V 55 H 10 Z';
-			if(heightPart) {
+			if (heightPart) {
 				let dArr = d.split(' ');
 				dArr[12] = String(heightPart + 5);
 				d = dArr.join(' ');
@@ -449,8 +450,10 @@
 		}
 
 		function addHighestAvailableTower(dataTrackors, differenceMaxMinVal, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent) {
-			let highestAvailableTower = dataTrackors[0][cand_xitor_type + '.C_HIGHEST_AVAILABLE_TOWER_HEIGHT'];
-			if(highestAvailableTower) {
+			let keyFirstElement = Object.keys(dataTrackors)[0];
+			let highestAvailableTower = dataTrackors[keyFirstElement][cand_xitor_type + '.C_HIGHEST_AVAILABLE_TOWER_HEIGHT'];
+			if (highestAvailableTower) {
+				highestAvailableTower = Number(Number(highestAvailableTower).toFixed(2));
 				if (maxDivisionValue >= highestAvailableTower) {
 					let lineY = (maxDivisionValue - highestAvailableTower) * avaliableHeightForDivisionsPx / differenceMaxMinVal + upperIndent;
 
@@ -465,14 +468,14 @@
 					svgVreTower.appendChild(line);
 				}
 			}
-			creatingTr('tblReference', highestAvailableTower, 'Highest Available Height', null, 'highestAvailableTowerF', 'highestAvailableTowerS', 1);
+			creatingTr('tblReference', highestAvailableTower.toFixed(2), 'Highest Available Height', null, 'highestAvailableTowerF', 'highestAvailableTowerS', 1);
 		}
 
 		function addDivisions(minValue, valOfDivision, maxLineVreY, divisionHeight, numOfGaps) {
 			let currentValue = minValue;
 			let currentLineVreY = maxLineVreY;
 
-			for(let i = 0; i <= numOfGaps; i ++) {
+			for (let i = 0; i <= numOfGaps; i ++) {
 				drawDivision(String(currentValue), currentLineVreY);
 				currentValue += valOfDivision;
 				currentLineVreY -= divisionHeight;
@@ -523,7 +526,7 @@
 		function addRectangle(dataTrackors, differenceMaxMinVal, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent) {
 			let colorIndex = -1;
 			let isGroundEquipment = 0;
-			for(let dataTrackor in dataTrackors) {
+			for (let dataTrackor in dataTrackors) {
 				colorIndex = (colorIndex < COLORS.length - 1) ? ++colorIndex : 0;
 
 				let vreBottomHeigt = dataTrackors[dataTrackor]['VRE_BOTTOM_HEIGHT'];
@@ -536,7 +539,7 @@
 					let vreHeight = vreTopHeight - vreBottomHeigt;
 					let rectHeight = vreHeight * avaliableHeightForDivisionsPx / differenceMaxMinVal;
 					drawRectangle(rectY, rectHeight, COLORS[colorIndex]);
-					if(projectId) {
+					if (projectId) {
 						let textRect = dataTrackors[dataTrackor][tenant_xitor_type + '.T_CARRIER_CATEGORY_CODE'];
 						drawTextRectangle(rectY, rectHeight, textRect);
 					}
@@ -546,7 +549,7 @@
 				let tblName = '';
 				let textForFirstColumn;
 
-				if(typeOfEquipment === 'Ground Equipment') {
+				if (typeOfEquipment === 'Ground Equipment') {
 					isGroundEquipment = 1;
 					tblName = 'tblGroundSpace';
 
@@ -562,25 +565,27 @@
 				textForSecontColumn = dataTrackors[dataTrackor]['TRACKOR_KEY'] + ' ' + dataTrackors[dataTrackor]['VRE_STATUS'];
 				creatingTr(tblName, textForFirstColumn, textForSecontColumn, COLORS[colorIndex], 'h', 'd');
 					
-				if(projectId) {
+				if (projectId) {
 					let tenantCategoryAndId = dataTrackors[dataTrackor][tenant_xitor_type + '.T_TENANT_CATEGORY_AND_ID'];
-					if(tenantCategoryAndId) {
+					if (tenantCategoryAndId) {
 						creatingTr(tblName, 'Tenant Category and ID', tenantCategoryAndId, null, 'childRefFirst', 'childRefSecond');
 					}
 
 					creatingTr(tblName, 'Project ID', projectId, null, 'childRefFirst', 'childRefSecond');					
 				}
 			}
-			if(isGroundEquipment === 1) {
+			if (isGroundEquipment === 1) {
 				let keyFirstElement = Object.keys(dataTrackors)[0];
 				
 				let totalGroundSpace = dataTrackors[keyFirstElement][cand_xitor_type + '.C_TOTAL_GROUND_SPACE_SQ_FT'];
-				if(totalGroundSpace) {					
+				if (totalGroundSpace) {	
+					totalGroundSpace = addThousandsSeparator(totalGroundSpace);				
 					creatingTr('tblGroundSpace', totalGroundSpace, 'Total Ground Space', null, 'spaceCandF', 'spaceCandS', 1);
 				}
 
 				let totalGroundSpaceUtilized = dataTrackors[keyFirstElement][cand_xitor_type + '.C_TOTAL_GROUND_SPACE_UTILIZED'];
-				if(totalGroundSpaceUtilized) {
+				if (totalGroundSpaceUtilized) {
+					totalGroundSpaceUtilized = addThousandsSeparator(totalGroundSpaceUtilized);
 					creatingTr('tblGroundSpace', totalGroundSpaceUtilized, 'Total Ground Space Utilized', null, 'spaceCandF', 'spaceCandS', 2);
 				}
 				
@@ -598,6 +603,14 @@
 			rect.style.fill = color;
 
 			svgVreTower.appendChild(rect);
+		}
+
+		function addThousandsSeparator(num) {
+			arrNum = num.split('.');
+			if (arrNum[0].length > 3) {
+				arrNum[0] = arrNum[0].replace(/\B(?=(?:\d{3})+(?!\d))/g, ',');
+			}
+			return arrNum.join('.');
 		}
 
 		function drawTextRectangle(rectY, rectHeight, textContent) {
