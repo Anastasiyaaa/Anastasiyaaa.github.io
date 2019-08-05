@@ -19,6 +19,8 @@
 		function getParam() {
 			let strUrlParam = window.location.search.replace( '?', '').split('&');
 			let cand_xitor_key = '';
+			let arrayStatuses;
+
 			for (let i = 0; i < strUrlParam.length; i++) {
 				let str_param = strUrlParam[i].split('=');
 				if (str_param[0] === 'autoris' && str_param[1]) {
@@ -48,13 +50,16 @@
 					tenant_xitor_type = decodeURIComponent(str_param[1]);
 				}
 				if (str_param[0] === 'cand_xitor_key') {
-					cand_xitor_key = decodeURIComponent(str_param[1])
+					cand_xitor_key = decodeURIComponent(str_param[1]);
+				}
+				if (str_param[0] === 'status') {
+					arrayStatuses = decodeURIComponent(str_param[1]).split(',');
 				}
 			}
-			getDataViaApi(autoris, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key);
+			getDataViaApi(autoris, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key, arrayStatuses);
 		}
 		
-		function getDataViaApi(logPass, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key) {
+		function getDataViaApi(logPass, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key, arrayStatuses) {
 			let vUrlValueFields = baseurl + 'trackor_types/' + vre_xitor_type + '/trackors';
 			let strPasLog = "Basic " + logPass;
 
@@ -73,9 +78,9 @@
 				success: function(data) {
 					if (data.length > 0) {
 						changeCaptionText(data);
-						let dataOpenVre = deleteVreExceptOpen(data);
-						if (dataOpenVre.length > 0) {
-							tenantKeySearch(dataOpenVre);
+						let dataVre = deleteUnnecessaryVre(data, arrayStatuses);
+						if (dataVre.length > 0) {
+							tenantKeySearch(dataVre);
 						} else {
 							let availableHeightPx = getAvailableHeight();
 							drawTowerRectangle(availableHeightPx - 30);
@@ -90,10 +95,10 @@
 			});
 		}
 		
-		function deleteVreExceptOpen(dataFieldValue) {
+		function deleteUnnecessaryVre(dataFieldValue, arrayStatuses) {
 			for (let i = dataFieldValue.length - 1; i >= 0; i--) {
 				let status = dataFieldValue[i]['VRE_STATUS'];
-				if (status !== 'Open Space') {
+				if (!arrayStatuses.includes(status)) {
 					dataFieldValue.splice(i, 1);
 				}
 			}
