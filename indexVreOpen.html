@@ -1,0 +1,750 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+	<script>
+		var baseurl = "";
+		let arreyFields = ['XITOR_KEY', 'VRE_TOP_HEIGHT', 'VRE_BOTTOM_HEIGHT', 'VRE_STATUS', 'VRE_TYPE_OF_EQUIPMENT', 'VRE_GROUND_SPACE_LENGTH_FT', 'VRE_GROUND_SPACE_WIDTH_FT', 'VRE_TOTAL_GROUND_SPACE_SQ_FT'];
+		let ARREY_TENANT_FIELDS = ['XITOR_KEY', 'T_TENANT_CATEGORY_AND_ID', 'T_CARRIER_CATEGORY_CODE'];
+		
+		//LightSalmon, lightGreen, LightGoldenrod1, lightBlue, lightPink, LightSlateBlue	
+		var COLORS = ['#FFA07A', '#90EE90', '#FFEC8B', '#ADD8E6', '#FFB6C1', '#8470FF']; 
+		var proj_xitor_type;
+		var cand_xitor_type;
+		var vre_xitor_type;
+		var tenant_xitor_type;
+		var autoris;
+
+		function getParam() {
+			let strUrlParam = window.location.search.replace( '?', '').split('&');
+			let cand_xitor_key = '';
+			for (let i = 0; i < strUrlParam.length; i++) {
+				let str_param = strUrlParam[i].split('=');
+				if (str_param[0] === 'autoris' && str_param[1]) {
+					autoris = decodeURIComponent(str_param[1]);
+				}
+				if (str_param[0] === 'url' && str_param[1]) {
+					 baseurl += "https://" + decodeURIComponent(str_param[1]) + ".mobilitie.com/api/v3/";
+ 				}
+				if (str_param[0] === 'cand_xitor_type' && str_param[1]) {
+					cand_xitor_type = decodeURIComponent(str_param[1]);
+					arreyFields.push(cand_xitor_type + '.XITOR_KEY');
+					arreyFields.push(cand_xitor_type + '.C_CANDIDATE_NAME');
+					arreyFields.push(cand_xitor_type + '.C_HIGHEST_AVAILABLE_TOWER_HEIGHT');
+					arreyFields.push(cand_xitor_type + '.C_TOTAL_POLE_HT_W_ANT_FT');
+					arreyFields.push(cand_xitor_type + '.C_TOTAL_GROUND_SPACE_SQ_FT');
+					arreyFields.push(cand_xitor_type + '.C_TOTAL_GROUND_SPACE_UTILIZED');
+				}
+				if (str_param[0] === 'proj_xitor_type') {
+					proj_xitor_type = decodeURIComponent(str_param[1]);
+					arreyFields.push(proj_xitor_type + '.XITOR_KEY');
+					arreyFields.push(proj_xitor_type + '.P_RELATED_TENANT_ID');
+				}
+				if (str_param[0] === 'vre_xitor_type' && str_param[1]) {
+					vre_xitor_type = decodeURIComponent(str_param[1]);
+				}
+				if (str_param[0] === 'tenant_xitor_type' && str_param[1]) {
+					tenant_xitor_type = decodeURIComponent(str_param[1]);
+				}
+				if (str_param[0] === 'cand_xitor_key') {
+					cand_xitor_key = decodeURIComponent(str_param[1])
+				}
+			}
+			getDataViaApi(autoris, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key);
+		}
+		
+		function getDataViaApi(logPass, baseurl, cand_xitor_type, vre_xitor_type, cand_xitor_key) {
+			let vUrlValueFields = baseurl + 'trackor_types/' + vre_xitor_type + '/trackors';
+			let strPasLog = "Basic " + logPass;
+
+			let dataForApi = {};
+			dataForApi['fields'] = arreyFields.join(',');
+			dataForApi[cand_xitor_type + '.XITOR_KEY'] = cand_xitor_key;
+			
+    		jQuery.ajax({
+				method: "GET",
+				url: vUrlValueFields,
+				headers: {
+					"Accept": "application/json",
+					"Authorization": strPasLog
+				},
+				data: dataForApi,
+				success: function(data) {
+					if (data.length > 0) {
+						let dataOpenVre = deleteVreExceptOpen(data);
+						tenantKeySearch(dataOpenVre);
+					} else {
+						let availableHeightPx = getAvailableHeight();
+						drawTowerRectangle(availableHeightPx - 30);
+						svgResize(availableHeightPx);
+					}
+				}
+			});
+		}
+		
+		function deleteVreExceptOpen(dataFieldValue) {
+			for (let dataField in dataFieldValue) {
+				let status = dataFieldValue[dataField]['VRE_STATUS'];
+				if (status !== 'Open Space') {
+					delete dataFieldValue[dataField];
+				}
+			}
+			return dataFieldValue;
+		}
+
+		function tenantKeySearch(dataFieldValue) {
+			let strTenants = '';
+			for (let dataObj in dataFieldValue) {
+				if (dataFieldValue[dataObj][proj_xitor_type + '.P_RELATED_TENANT_ID']) {
+					strTenants += dataFieldValue[dataObj][proj_xitor_type + '.P_RELATED_TENANT_ID'] + ', ';
+				}
+			}
+			if (strTenants) {
+				strTenants = strTenants.substr(0, strTenants.length - 2);
+				getDataTenantViaApi(strTenants, dataFieldValue);
+			} else {
+				creationSingleObject(null, dataFieldValue);
+			}
+		}
+
+		function getDataTenantViaApi(strTenants, dataFieldValue) {
+			var vUrlValueFields = baseurl + 'trackor_types/' + tenant_xitor_type + '/trackors';
+			var strPasLog = "Basic " + autoris;
+
+			jQuery.ajax({
+				method: "GET",
+				url: vUrlValueFields,
+				headers: {
+					"Accept": "application/json",
+					"Authorization": strPasLog
+				},
+				data: {
+					fields: ARREY_TENANT_FIELDS.join(','),
+					xitor_key: strTenants
+				},
+				success: function(data) {
+					creationSingleObject(data, dataFieldValue);
+				}
+			});
+		}
+		
+		function creationSingleObject(dataTenant, dataBasic) {
+			for (let dataBasicObj in dataBasic) {
+				let tenantKey = dataBasic[dataBasicObj][proj_xitor_type + '.P_RELATED_TENANT_ID'];
+				if (tenantKey) {
+					for (let dataTenantObj in dataTenant) {
+						let fieldsOfTenantData = dataTenant[dataTenantObj];
+						if (fieldsOfTenantData['TRACKOR_KEY'] === tenantKey) {
+							for (tenantField in ARREY_TENANT_FIELDS) {
+								let fieldName = ARREY_TENANT_FIELDS[tenantField];
+								if (fieldName !== 'XITOR_KEY') {
+									dataBasic[dataBasicObj][tenant_xitor_type + '.' + fieldName] = fieldsOfTenantData[fieldName];
+								}
+							}
+						}
+					}
+				}
+			}
+			draw(dataBasic);
+		}
+
+		function draw(dataFields) {
+			changeCaptionText(dataFields);
+			
+			let availableHeightPx = getAvailableHeight();
+			let availableCentralHeightPx = availableHeightPx - 50 - 50;
+			let avaliableHeightForDivisionsPx = availableCentralHeightPx - 60;
+			let minLineVreY = 50 + 10 + 60 / 2;
+			let maxLineVreY = minLineVreY + avaliableHeightForDivisionsPx;
+
+			let maxNumOfNums = avaliableHeightForDivisionsPx / 30;
+
+			let maxTopValue = maxValueSearch(dataFields);
+			let minBottomValue = minValueSearch(dataFields);
+			let difference = maxTopValue - minBottomValue;
+			let initialValOfDivision = difference / maxNumOfNums;
+			let valOfDivision = getValOfDivision(initialValOfDivision);
+			let minMultipleOfFive = getMinMultipleOfFive(minBottomValue);
+			let numOfGaps = Math.ceil((maxTopValue - minMultipleOfFive) / valOfDivision);
+			let divisionHeight = avaliableHeightForDivisionsPx / numOfGaps;
+			let maxDivisionValue = numOfGaps * valOfDivision + minMultipleOfFive;
+
+			let totalPole = addTotalPoleDivision(dataFields, maxTopValue);
+
+			if (totalPole - maxDivisionValue > 2 * valOfDivision && minMultipleOfFive > 2 * valOfDivision)  {
+				//upper and lower breaks
+				let upperIndent = 90;
+				drawTopPart();
+				drawCenterPart(availableCentralHeightPx);
+				drawBottomPart(availableCentralHeightPx + 30);
+
+				addDivisions(minMultipleOfFive, valOfDivision, maxLineVreY, divisionHeight, numOfGaps);
+				
+				dataFields.sort(compareTopHeight);
+				addRectangle(dataFields, numOfGaps * valOfDivision, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
+				addHighestAvailableTower(dataFields, numOfGaps * valOfDivision, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
+				
+			} else if (totalPole - maxDivisionValue > 2 * valOfDivision) {
+				//upper break
+				let upperIndent = 90;
+
+				drawTopPart();
+				drawBottomPart(40, availableHeightPx - 50 - 10);
+				avaliableHeightForDivisionsPx = availableHeightPx - 50 - 30 - 15;
+				maxLineVreY = minLineVreY + avaliableHeightForDivisionsPx;
+				
+				let numOfGaps = Math.ceil((maxTopValue) / valOfDivision);
+				let maxDivisionValue = numOfGaps * valOfDivision;
+				let divisionHeightPx = convertHeightToPx(valOfDivision, avaliableHeightForDivisionsPx, maxDivisionValue);
+
+				addDivisions(valOfDivision, valOfDivision, maxLineVreY - divisionHeightPx, divisionHeightPx, numOfGaps - 1);
+
+				dataFields.sort(compareTopHeight);
+				addRectangle(dataFields, maxDivisionValue, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
+				addHighestAvailableTower(dataFields, maxDivisionValue, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent);
+
+			} else if (minMultipleOfFive > 2 * valOfDivision) {
+				//lower break
+				let upperIndent = 20;
+				availableTopHeightPx = availableHeightPx - 50 - 10;
+				drawTopPart(availableTopHeightPx);
+				drawBottomPart(availableTopHeightPx - 10);
+				
+				maxDivisionValue = getMaxDivisionValueWithoutTotalPole(totalPole, minMultipleOfFive, valOfDivision);
+				let upperDivisionDistance = totalPole - maxDivisionValue;
+				totalHeightForDivisionsPx = availableTopHeightPx - 30;
+				let upperDivisionDistancePx = convertHeightToPx(upperDivisionDistance, totalHeightForDivisionsPx, totalPole - minMultipleOfFive);
+				let avaliableHeightForDivisionsPx = totalHeightForDivisionsPx - upperDivisionDistancePx;
+
+				numOfGaps = (maxDivisionValue - minMultipleOfFive) / valOfDivision;
+				let divisionHeightPx = convertHeightToPx(valOfDivision, totalHeightForDivisionsPx, totalPole - minMultipleOfFive);
+				minLineVreY = 20 + upperDivisionDistancePx;
+				maxLineVreY = minLineVreY + avaliableHeightForDivisionsPx;
+				
+				addDivisions(minMultipleOfFive, valOfDivision, maxLineVreY, divisionHeightPx, numOfGaps);
+				
+				dataFields.sort(compareTopHeight);
+				addRectangle(dataFields, totalPole - minMultipleOfFive, totalHeightForDivisionsPx, totalPole, upperIndent);
+				addHighestAvailableTower(dataFields, totalPole - minMultipleOfFive, totalHeightForDivisionsPx, totalPole, upperIndent);
+				
+			} else {
+				// no breaks
+				let upperIndent = 20;
+				totalHeightForDivisionsPx = availableHeightPx - 30;
+
+				drawTowerRectangle(totalHeightForDivisionsPx);
+				maxDivisionValue = getMaxDivisionValueWithoutTotalPole(totalPole, 0, valOfDivision);
+				
+				let upperDivisionDistance = totalPole - maxDivisionValue;
+
+				let upperDivisionDistancePx = convertHeightToPx(upperDivisionDistance, totalHeightForDivisionsPx, totalPole);
+				let avaliableHeightForDivisionsPx = totalHeightForDivisionsPx - upperDivisionDistancePx;
+
+				numOfGaps = (maxDivisionValue) / valOfDivision;
+				let divisionHeightPx = convertHeightToPx(valOfDivision, totalHeightForDivisionsPx, totalPole);
+				minLineVreY = 20 + upperDivisionDistancePx;
+				maxLineVreY = minLineVreY + avaliableHeightForDivisionsPx;
+				
+				addDivisions(valOfDivision, valOfDivision, maxLineVreY - divisionHeightPx, divisionHeightPx, numOfGaps - 1);
+				
+				dataFields.sort(compareTopHeight);
+				addRectangle(dataFields, totalPole, totalHeightForDivisionsPx, totalPole, upperIndent);
+				addHighestAvailableTower(dataFields, totalPole, totalHeightForDivisionsPx, totalPole, upperIndent);
+			}
+			svgResize(availableHeightPx);			
+		}
+
+		function changeCaptionText(dataFields) {
+			let keyFirstElement = Object.keys(dataFields)[0];
+			let candId = dataFields[keyFirstElement][cand_xitor_type + '.TRACKOR_KEY'];
+			let captionCand = document.getElementById('pCaptionID');
+			captionCand.textContent = candId;
+
+			let candName = dataFields[keyFirstElement][cand_xitor_type + '.C_CANDIDATE_NAME'];
+			if (candName) {
+				let captionCand = document.getElementById('pCaptionName');
+				captionCand.textContent = candName;
+			}			
+		}
+
+		function getAvailableHeight() {
+			let pCaptionID = document.getElementById("pCaptionID");
+			let pCaptionIdIndent = pCaptionID.getBoundingClientRect();
+
+			let pCaptionName = document.getElementById("pCaptionName");
+			let pCaptionNameIndent = pCaptionName.getBoundingClientRect();
+
+			let divDiagram = document.getElementById("divDiagram");
+			let divDiagramIndent = divDiagram.getBoundingClientRect();
+			
+			let availableHeightPx = document.documentElement.clientHeight - pCaptionNameIndent.top - pCaptionNameIndent.height - divDiagramIndent.top;
+			return availableHeightPx;
+		}
+
+		function maxValueSearch(dataTrackors) {
+			let maxValue = 0;
+			for (let trckorObj in dataTrackors) {
+				if (dataTrackors[trckorObj]['VRE_TOP_HEIGHT']) {
+					let topValue = Number(dataTrackors[trckorObj]['VRE_TOP_HEIGHT']);
+					maxValue = checkedMax(topValue, maxValue);
+				}
+			}
+			return maxValue;
+		}
+
+		function checkedMax(fieldValue, maxValue) {
+			if (fieldValue && fieldValue > maxValue) {
+				maxValue = fieldValue;
+			}
+			return maxValue;
+		}
+
+		function minValueSearch(dataTrackors) {
+			let minValue = Number.MAX_VALUE;
+			for (let trckorObj in dataTrackors) {
+				let bottomValue = Number(dataTrackors[trckorObj]['VRE_BOTTOM_HEIGHT']);
+				minValue = checkedMin(bottomValue, minValue);
+			}
+			return minValue;
+		}
+
+		function checkedMin(fieldValue, minValue) {
+			if (fieldValue && fieldValue < minValue) {
+				minValue = fieldValue;
+			}
+			return minValue;
+		}
+
+		function getValOfDivision(initialValOfDivision) {
+			let valOfDivision = Math.ceil(initialValOfDivision);
+			do {
+				valOfDivision ++;
+			} while (valOfDivision % 5 > 0); 
+
+			return valOfDivision;
+		}
+
+		function getMinMultipleOfFive(minValue) {
+			minValue = Math.floor(minValue);
+			while (minValue % 5 > 0) {
+				minValue --;
+			}
+			return minValue;
+		}
+
+		function addTotalPoleDivision(dataFields, maxTopRect) {
+			let keyFirstElement = Object.keys(dataFields)[0];
+			let totalPole = dataFields[keyFirstElement][cand_xitor_type + '.C_TOTAL_POLE_HT_W_ANT_FT'];
+			if (totalPole) {
+				let totalPoleRound = Number(Number(totalPole).toFixed(1));
+				drawDivision(totalPoleRound, 20);
+				return totalPoleRound;
+			}
+			return maxTopRect;
+		}
+
+		function convertHeightToPx(heightVal, differenceMaxMinPx, differenceMaxMinVal) {
+			let heightPx = heightVal * differenceMaxMinPx / differenceMaxMinVal;
+			return heightPx;
+		}
+
+		function getMaxDivisionValueWithoutTotalPole(totalPole, minMultipleOfFive, valOfDivision) {
+			let scaleLength = totalPole - minMultipleOfFive - valOfDivision;
+			while (scaleLength % valOfDivision > 0) {
+				scaleLength --;
+			}
+			maxDivisionValueWithoutTotalPole = scaleLength + minMultipleOfFive;
+			return maxDivisionValueWithoutTotalPole;
+		}
+
+		function drawTopPart(heightPart) {
+			let d = 'M 10 10 H 50 V 50 Q 40 55 30 50 T 10 50 Z';
+			if (heightPart) {
+				let dArr = d.split(' ');
+				dArr[6] = String(heightPart);
+				dArr[9] = String(heightPart + 5);
+				dArr[11] = String(heightPart);
+				dArr[14] = String(heightPart);
+				d = dArr.join(' ');
+			}
+			
+			let topPart = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			topPart.setAttributeNS(null, 'id', 'topPart');
+			topPart.setAttributeNS(null, 'd', d);
+			topPart.style.fill = '#FFD700';
+			topPart.style.stroke = 'black';
+			
+			let svgTower = document.getElementById('svgTower');
+			svgTower.appendChild(topPart);
+		}
+
+		function drawCenterPart(availableCentralHeightPx) {
+			let d = 'M 10 15 Q 20 10 30 15 T 50 15 V 100 Q 40 105 30 100 T 10 100 Z';
+			if (availableCentralHeightPx) {
+				let dArr = d.split(' ');
+				dArr[12] = String(availableCentralHeightPx);
+				dArr[15] = String(availableCentralHeightPx + 5);
+				dArr[17] = String(availableCentralHeightPx);
+				dArr[20] = String(availableCentralHeightPx);
+				d = dArr.join(' ');
+			}			
+
+			let centerPart = document.createElementNS("http://www.w3.org/2000/svg", "path");
+			centerPart.setAttributeNS(null, 'id', 'centerPart');
+			centerPart.setAttributeNS(null, 'd', d);
+			centerPart.setAttributeNS(null, 'transform', 'translate(0, 40)');
+			centerPart.style.fill = '#FFD700';
+			centerPart.style.stroke = 'black';
+			
+			let svgTower = document.getElementById('svgTower');
+			svgTower.appendChild(centerPart);
+		}
+
+		function drawBottomPart(yShift, heightPart) {
+			let d = 'M 10 15 Q 20 10 30 15 T 50 15 V 55 H 10 Z';
+			if (heightPart) {
+				let dArr = d.split(' ');
+				dArr[12] = String(heightPart + 5);
+				d = dArr.join(' ');
+			}
+
+			let bottomPart = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+			bottomPart.setAttributeNS(null, 'id', 'bottomPart');
+			bottomPart.setAttributeNS(null, 'd', d);
+			bottomPart.style.fill = '#FFD700';
+			bottomPart.style.stroke = 'black';
+
+			let bottomPartTranslate = 'translate(0,' + yShift + ')';
+			bottomPart.setAttribute('transform', bottomPartTranslate);
+			
+			let svgTower = document.getElementById('svgTower');
+			svgTower.appendChild(bottomPart);
+		}
+
+		function drawTowerRectangle(rectHeight) {
+			let rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+			rect.setAttributeNS(null, 'x', '10');
+			rect.setAttributeNS(null, 'y', '10');
+			rect.setAttributeNS(null, 'width', '40');
+			rect.setAttributeNS(null, 'height', rectHeight);
+			rect.style.fill = '#FFD700';
+			rect.style.stroke = 'black';
+
+			let svgTower = document.getElementById('svgTower');
+			svgTower.appendChild(rect);
+		}
+
+		function svgResize(availableHeightPx) {
+			let svgVreTower = document.getElementById("svgVreTower");
+			let svgVreTowerVB = svgVreTower.getAttribute("viewBox").split(" ");
+			svgVreTowerVB[3] = String(availableHeightPx);
+			svgVreTower.setAttribute("viewBox", svgVreTowerVB.join(" "));
+			svgVreTower.setAttribute("height", availableHeightPx);
+
+			let svgTower = document.getElementById("svgTower");
+			let svgTowerVB = svgTower.getAttribute("viewBox").split(" ");
+			svgTowerVB[3] = String(availableHeightPx - 10);
+			svgTower.setAttribute("viewBox", svgTowerVB.join(" "));
+			svgTower.setAttribute("height", availableHeightPx - 10);
+		}
+
+		function addHighestAvailableTower(dataTrackors, differenceMaxMinVal, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent) {
+			let keyFirstElement = Object.keys(dataTrackors)[0];
+			let highestAvailableTower = dataTrackors[keyFirstElement][cand_xitor_type + '.C_HIGHEST_AVAILABLE_TOWER_HEIGHT'];
+			if (highestAvailableTower) {
+				highestAvailableTower = Number(Number(highestAvailableTower).toFixed(2));
+				if (maxDivisionValue >= highestAvailableTower) {
+					let lineY = (maxDivisionValue - highestAvailableTower) * avaliableHeightForDivisionsPx / differenceMaxMinVal + upperIndent;
+
+					let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+					line.setAttribute('stroke', 'red');
+					line.setAttribute('stroke-width', '2');
+					line.setAttribute('x1', '50');
+					line.setAttribute('x2', '185');
+					line.setAttribute('y1', lineY);
+					line.setAttribute('y2', lineY);
+
+					svgVreTower.appendChild(line);
+				}
+			}
+			creatingTr('tblReference', highestAvailableTower.toFixed(2), 'Highest Available Height', null, 'highestAvailableTowerF', 'highestAvailableTowerS', 1);
+		}
+
+		function addDivisions(minValue, valOfDivision, maxLineVreY, divisionHeight, numOfGaps) {
+			let currentValue = minValue;
+			let currentLineVreY = maxLineVreY;
+
+			for (let i = 0; i <= numOfGaps; i ++) {
+				drawDivision(String(currentValue), currentLineVreY);
+				currentValue += valOfDivision;
+				currentLineVreY -= divisionHeight;
+			}
+		}
+
+		function drawDivision(textValue, lineVreY) {
+			let lineWidth = 10;
+
+			let g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+			svgVreTower.appendChild(g);
+
+			let text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+			text.setAttributeNS(null, 'font', '20px');
+			text.setAttributeNS(null, 'x', '0');
+			text.setAttributeNS(null, 'y', '21');
+			text.textContent = textValue;
+				
+			g.appendChild(text);
+
+			let textWidth = text.getBBox().width;
+			let textHeight = Math.ceil(text.getBBox().height);
+			let offsetX = 50 - lineWidth - textWidth;
+
+			let line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+			line.setAttribute('stroke', 'black');
+			line.setAttribute('stroke-width', '1');
+			line.setAttribute('x1', textWidth);
+			line.setAttribute('x2', textWidth + lineWidth);
+			line.setAttribute('y1', (textHeight + 6) / 2);
+			line.setAttribute('y2', (textHeight + 6) / 2);
+
+			g.appendChild(line);
+			let translateG = "translate(" + offsetX + "," + (lineVreY - (textHeight + 6) / 2)  + ")";
+			g.setAttributeNS(null, "transform", translateG);
+		}
+
+		function compareTopHeight(trackorA, trackorB) {
+			let topHeightA = trackorA['VRE_TOP_HEIGHT'];
+			topHeightA = (!trackorA['VRE_BOTTOM_HEIGHT']) ? null : topHeightA;
+			
+			let topHeightB = trackorB['VRE_TOP_HEIGHT'];
+			topHeightB = (!trackorB['VRE_BOTTOM_HEIGHT']) ? null : topHeightB;
+
+			return Number(topHeightB) - Number(topHeightA);
+		}
+
+		function addRectangle(dataTrackors, differenceMaxMinVal, avaliableHeightForDivisionsPx, maxDivisionValue, upperIndent) {
+			let colorIndex = -1;
+			let isGroundEquipment = 0;
+			for (let dataTrackor in dataTrackors) {
+				colorIndex = (colorIndex < COLORS.length - 1) ? ++colorIndex : 0;
+
+				let vreBottomHeigt = dataTrackors[dataTrackor]['VRE_BOTTOM_HEIGHT'];
+				let vreTopHeight = dataTrackors[dataTrackor]['VRE_TOP_HEIGHT'];
+				let projectId = dataTrackors[dataTrackor][proj_xitor_type + '.TRACKOR_KEY'];
+
+				if (vreBottomHeigt && vreTopHeight) {
+					let rectY = (maxDivisionValue - vreTopHeight) * avaliableHeightForDivisionsPx / differenceMaxMinVal + upperIndent;
+
+					let vreHeight = vreTopHeight - vreBottomHeigt;
+					let rectHeight = vreHeight * avaliableHeightForDivisionsPx / differenceMaxMinVal;
+					drawRectangle(rectY, rectHeight, COLORS[colorIndex]);
+					if (projectId) {
+						let textRect = dataTrackors[dataTrackor][tenant_xitor_type + '.T_CARRIER_CATEGORY_CODE'];
+						drawTextRectangle(rectY, rectHeight, textRect);
+					}
+				}
+
+				let typeOfEquipment = dataTrackors[dataTrackor]['VRE_TYPE_OF_EQUIPMENT'];
+				let tblName = '';
+				let textForFirstColumn;
+
+				if (typeOfEquipment === 'Ground Equipment') {
+					isGroundEquipment = 1;
+					tblName = 'tblGroundSpace';
+
+					let groundSpaceLength = dataTrackors[dataTrackor]['VRE_GROUND_SPACE_LENGTH_FT'];
+					let groundSpaceWidth = dataTrackors[dataTrackor]['VRE_GROUND_SPACE_WIDTH_FT'];
+					let totalGroundSpace = dataTrackors[dataTrackor]['VRE_TOTAL_GROUND_SPACE_SQ_FT'];
+					textForFirstColumn = groundSpaceLength + ' x ' + groundSpaceWidth + ', ' + totalGroundSpace + ' sq ft'
+
+				} else {
+					tblName = 'tblReference';
+					textForFirstColumn = vreTopHeight + ' - ' + vreBottomHeigt + ' ft';	
+				}
+				textForSecontColumn = dataTrackors[dataTrackor]['TRACKOR_KEY'] + ' ' + dataTrackors[dataTrackor]['VRE_STATUS'];
+				creatingTr(tblName, textForFirstColumn, textForSecontColumn, COLORS[colorIndex], 'h', 'd');
+					
+				if (projectId) {
+					let tenantCategoryAndId = dataTrackors[dataTrackor][tenant_xitor_type + '.T_TENANT_CATEGORY_AND_ID'];
+					if (tenantCategoryAndId) {
+						creatingTr(tblName, 'Tenant Category and ID', tenantCategoryAndId, null, 'childRefFirst', 'childRefSecond');
+					}
+
+					creatingTr(tblName, 'Project ID', projectId, null, 'childRefFirst', 'childRefSecond');					
+				}
+			}
+			if (isGroundEquipment === 1) {
+				let keyFirstElement = Object.keys(dataTrackors)[0];
+				
+				let totalGroundSpace = dataTrackors[keyFirstElement][cand_xitor_type + '.C_TOTAL_GROUND_SPACE_SQ_FT'];
+				if (totalGroundSpace) {	
+					totalGroundSpace = addThousandsSeparator(totalGroundSpace);				
+					creatingTr('tblGroundSpace', totalGroundSpace, 'Total Ground Space', null, 'spaceCandF', 'spaceCandS', 1);
+				}
+
+				let totalGroundSpaceUtilized = dataTrackors[keyFirstElement][cand_xitor_type + '.C_TOTAL_GROUND_SPACE_UTILIZED'];
+				if (totalGroundSpaceUtilized) {
+					totalGroundSpaceUtilized = addThousandsSeparator(totalGroundSpaceUtilized);
+					creatingTr('tblGroundSpace', totalGroundSpaceUtilized, 'Total Ground Space Utilized', null, 'spaceCandF', 'spaceCandS', 2);
+				}
+				
+				drawTableTitle();
+			}
+		}
+
+		function drawRectangle(rectY, rectHeight, color) {
+			let rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+	
+			rect.setAttribute('x', '95');
+			rect.setAttribute('y', rectY);
+			rect.setAttribute('width', '90');
+			rect.setAttribute('height', rectHeight);
+			rect.style.fill = color;
+
+			svgVreTower.appendChild(rect);
+		}
+
+		function addThousandsSeparator(num) {
+			arrNum = num.split('.');
+			if (arrNum[0].length > 3) {
+				arrNum[0] = arrNum[0].replace(/\B(?=(?:\d{3})+(?!\d))/g, ',');
+			}
+			return arrNum.join('.');
+		}
+
+		function drawTextRectangle(rectY, rectHeight, textContent) {
+			let textRect = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+			
+			let textRectY = rectY + rectHeight / 2 + 5;
+			textRect.setAttribute('y', textRectY);
+			textRect.style.fill = "blact";
+			textRect.textContent = textContent;
+
+			svgVreTower.appendChild(textRect);
+
+			textRectIndent = textRect.getBoundingClientRect();
+			textXrelativeToRect = 90 / 2 - textRectIndent.width / 2;
+			textRectX = (textXrelativeToRect < 0) ? 100 : textXrelativeToRect + 95;
+			textRect.setAttribute('x', textRectX);
+		}
+
+		function creatingTr(tblId, textFirst, textSecond, color, classFirst, classSecond, rowNum) {
+			let tblReference = document.getElementById(tblId);
+
+			rowNum = rowNum || tblReference.rows.length;
+			let rowReference = tblReference.insertRow(rowNum);
+				
+			let tdFirst = document.createElement('TD');
+			tdFirst.setAttribute('class', classFirst);
+			tdFirst.style.backgroundColor = color;
+			tdFirst.appendChild(document.createTextNode(textFirst));
+			rowReference.appendChild(tdFirst);
+			
+			let tdSecond = document.createElement('TD');
+			tdSecond.setAttribute("class", classSecond);
+			tdSecond.appendChild(document.createTextNode(textSecond));
+			rowReference.appendChild(tdSecond);
+		}
+
+		function drawTableTitle() {
+			let tdTitle = document.getElementById('titleGroundSpace');
+			tdTitle.textContent = 'Ground Space';
+		}
+	</script>
+
+    <style type="text/css">
+		body {
+			display:flex;
+			flex-direction: row;
+			font-size: 20px;
+			padding: 0;
+			margin: 0;
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			right: 0;
+			left: 0;
+		}
+        .diagram {
+			overflow: auto;
+			flex-grow: 1;
+            margin-top: 0.5em;
+        }
+		.heights {
+			overflow: auto;
+			flex-grow: 0;
+			flex-shrink: 0;
+			width: 50%;
+		}
+        .heights table {
+            border-spacing: 1em;
+        }
+        .heights td.h {
+            border: 1px solid black;
+            font-weight: bold;
+			white-space: nowrap;
+			text-align: center;
+        }
+        .heights td.hh {
+            padding: 0.4em 0.6em; 
+            font-weight: bold;
+			white-space: nowrap;
+			text-align: center;
+        }
+        .heights td.d {
+			font-weight: bold;
+        }
+		.heights td.childRefFirst {
+			padding-left: 1em;
+			font-size: 18px;
+			white-space: nowrap;
+		}
+		.heights td.childRefSecond {
+			font-size: 18px;
+		}
+		.heights td.highestAvailableTowerF {
+			color: red;
+			font-weight: bold;
+			text-align: center;
+		}
+		.heights td.highestAvailableTowerS {
+			color: red;
+			font-weight: bold;
+		}
+		
+		.heights td.spaceCandF {
+			text-align: center;
+		}
+		.heights td.spaceCandS {
+		}
+    </style>
+
+</head>
+<body onload="getParam()">
+<div class="diagram" align="center" id="divDiagram">
+	<p id="pCaptionID" style="margin:0px;font-style:normal;font-weight:normal;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.07731885"></p>
+	<p id="pCaptionName" style="margin:0px;font-style:normal;font-weight:normal;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.07731885">VSE Diagram</p>
+	<svg id="svgVreTower" viewBox="0 0 200 667" width = "200" height = "667" style="position:relative;" xmlns="http://www.w3.org/2000/svg" version="1.0" encoding="UTF-8" standalone="no">
+		<svg id = "svgTower" viewBox="0 0 60 667" width = "60" height = "667" x = "40" y = "10" style="position: absolute;" >
+		</svg>
+	</svg>
+</div>
+<div id="divTblReference" class="heights">
+    <table id="tblReference">
+        <tbody>
+            <tr>
+				<td class="hh">top - bottom ft</td>
+            </tr>
+        </tbody>
+	</table>
+	<table id="tblGroundSpace">
+        <tbody>
+            <tr>
+				<td id='titleGroundSpace' class="hh"></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
