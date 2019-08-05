@@ -72,8 +72,15 @@
 				data: dataForApi,
 				success: function(data) {
 					if (data.length > 0) {
+						changeCaptionText(data);
 						let dataOpenVre = deleteVreExceptOpen(data);
-						tenantKeySearch(dataOpenVre);
+						if (dataOpenVre.length > 0) {
+							tenantKeySearch(dataOpenVre);
+						} else {
+							let availableHeightPx = getAvailableHeight();
+							drawTowerRectangle(availableHeightPx - 30);
+							svgResize(availableHeightPx);
+						}						
 					} else {
 						let availableHeightPx = getAvailableHeight();
 						drawTowerRectangle(availableHeightPx - 30);
@@ -84,10 +91,10 @@
 		}
 		
 		function deleteVreExceptOpen(dataFieldValue) {
-			for (let dataField in dataFieldValue) {
-				let status = dataFieldValue[dataField]['VRE_STATUS'];
+			for (let i = dataFieldValue.length - 1; i >= 0; i--) {
+				let status = dataFieldValue[i]['VRE_STATUS'];
 				if (status !== 'Open Space') {
-					delete dataFieldValue[dataField];
+					dataFieldValue.splice(i, 1);
 				}
 			}
 			return dataFieldValue;
@@ -149,9 +156,7 @@
 			draw(dataBasic);
 		}
 
-		function draw(dataFields) {
-			changeCaptionText(dataFields);
-			
+		function draw(dataFields) {			
 			let availableHeightPx = getAvailableHeight();
 			let availableCentralHeightPx = availableHeightPx - 50 - 50;
 			let avaliableHeightForDivisionsPx = availableCentralHeightPx - 60;
